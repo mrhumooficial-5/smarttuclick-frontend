@@ -489,242 +489,165 @@ function newSaleAfterComplete(){closeModal();view='pos';render();setTimeout(focu
 function openMultiPayment(){let total=cartTotal();let methods=['Efectivo','Yape','Plin','Izipay','Tarjeta','Transferencia'];let rows=methods.map(m=>`<div class="row"><label style="min-width:110px"><b>${m}</b></label><input id="mp_${m}" class="input" type="number" min="0" step="0.01" value="0" placeholder="S/ 0.00" oninput="updateMultiPayment()"></div>`).join('');modal('Generar pago',`<p><b>Total a pagar: ${money(total)}</b></p>${rows}<div class="payment-summary"><div><span>Total asignado</span><b id="mpPaid">S/ 0.00</b></div><div class="change"><span id="mpRemainingLabel">Falta</span><b id="mpRemaining">${money(total)}</b></div></div>`,`<button id="mpConfirm" class="btn good" onclick="confirmMultiPayment()" disabled>Confirmar pago</button>`);window.updateMultiPayment=function(){let paid=methods.reduce((a,m)=>a+Number(document.getElementById('mp_'+m)?.value||0),0),remaining=total-paid;document.getElementById('mpPaid').textContent=money(paid);document.getElementById('mpRemaining').textContent=money(Math.abs(remaining));document.getElementById('mpRemainingLabel').textContent=remaining>0.009?'Falta':remaining<-0.009?'Exceso':'Completo';let btn=document.getElementById('mpConfirm');if(btn)btn.disabled=Math.abs(remaining)>0.009};window.confirmMultiPayment=function(){let payments=methods.map(m=>({method:m,amount:Number(document.getElementById('mp_'+m)?.value||0),received:Number(document.getElementById('mp_'+m)?.value||0)})).filter(x=>x.amount>0);let paid=payments.reduce((a,p)=>a+p.amount,0);if(Math.abs(paid-total)>0.009)return alert(paid<total?`Falta ${money(total-paid)} por asignar.`:`Has asignado ${money(paid-total)} de más.`);closeModal();completeSale(payments)};updateMultiPayment()}function sendSaleWhatsApp(id){let s=saleById(id);if(!s)return;let c=db.clients.find(x=>x.id===s.clientId),phone=(c?.phone||'').replace(/\D/g,'');let msg=`Hola ${c?.name||'cliente'}, te enviamos tu comprobante ${s.doc}. Total: ${money(s.total)}. Gracias por tu compra.`;let url=phone?`https://wa.me/${phone.startsWith('51')?phone:'51'+phone}?text=${encodeURIComponent(msg)}`:`https://wa.me/?text=${encodeURIComponent(msg)}`;window.open(url,'_blank')}
 function downloadSaleXml(id){let s=saleById(id);if(!s)return;let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<comprobante prototipo="true"><tipo>${esc(s.docType)}</tipo><numero>${esc(s.doc)}</numero><cliente>${esc(s.client)}</cliente><moneda>PEN</moneda><total>${s.total.toFixed(2)}</total><pago>${esc(s.payment)}</pago><estado>PROTOTIPO_SUNAT</estado></comprobante>`;let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([xml],{type:'application/xml'}));a.download=s.doc+'.xml';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function downloadSalePdf(id){printSaleFormat(id,'A4')}
+
 function printSaleFormat(id, format = 'A4') {
-  const s = saleById(id);
-  if (!s) {
-    alert('No se encontró la venta.');
-    return;
-  }
+    const s = saleById(id);
 
-  const items = (s.items || []).map(i => {
-    const base = Number(i.qty || 0) * Number(i.price || 0);
-    const d = Number(i.discount || 0);
-
-    const disc = i.discountType === '%'
-      ? base * d / 100
-      : d;
-
-    const total = Math.max(0, base - disc);
-
-    return `
-      <tr>
-        <td>${esc(i.name)}</td>
-        <td>${i.qty}</td>
-        <td>${money(i.price)}</td>
-        <td>${disc ? money(disc) : '-'}</td>
-        <td>${money(total)}</td>
-      </tr>
-    `;
-  }).join('');
-
-  const itemDiscount = (s.items || []).reduce((a, i) => {
-    const base = Number(i.qty || 0) * Number(i.price || 0);
-    const d = Number(i.discount || 0);
-
-    return a + (
-      i.discountType === '%'
-        ? base * d / 100
-        : d
-    );
-  }, 0);
-
-  const ticket = format === 'TICKET';
-
-  const w = window.open(
-    '',
-    '_blank',
-    'width=900,height=800'
-  );
-
-  if (!w) {
-    alert(
-      'Chrome bloqueó la ventana de impresión. ' +
-      'Permite ventanas emergentes para SmartTuClick.'
-    );
-    return;
-  }
-
-  const company = db.company?.name || 'SmartTuClick';
-  const documentType = s.docType || 'VENTA';
-
-  const paymentText = s.payments?.length > 1
-    ? s.payments
-        .map(p => `${esc(p.method)} ${money(p.amount)}`)
-        .join(' · ')
-    : esc(s.payment || 'No especificado');
-
-  const html = `
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>${esc(s.doc || 'Comprobante')}</title>
-
-<style>
-@page {
-  size: ${ticket ? '80mm auto' : 'A4'};
-  margin: ${ticket ? '4mm' : '12mm'};
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  font-family: Arial, sans-serif;
-  font-size: ${ticket ? '11px' : '13px'};
-  color: #111;
-  padding: ${ticket ? '4px' : '18px'};
-  max-width: ${ticket ? '72mm' : '100%'};
-  margin: 0 auto;
-}
-
-h2 {
-  text-align: center;
-  margin: 0 0 8px;
-}
-
-p {
-  margin: 5px 0;
-}
-
-.center {
-  text-align: center;
-}
-
-.right {
-  text-align: right;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 12px;
-  font-size: ${ticket ? '10px' : '13px'};
-}
-
-th,
-td {
-  padding: 5px 3px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
-}
-
-.summary {
-  margin-top: 14px;
-  border-top: 1px solid #999;
-  padding-top: 8px;
-}
-
-.change {
-  font-size: 15px;
-  font-weight: bold;
-}
-
-.footer {
-  margin-top: 25px;
-  text-align: center;
-  font-size: 10px;
-}
-</style>
-</head>
-
-<body>
-
-<h2>${esc(company)}</h2>
-
-<p class="center">
-  <b>${esc(s.doc || '')}</b>
-  ·
-  ${esc(documentType)}
-</p>
-
-<p>Cliente: ${esc(s.client || 'Cliente general')}</p>
-<p>Tienda: ${esc(s.store || '')}</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Producto</th>
-      <th>Cant.</th>
-      <th>Precio</th>
-      <th>Dscto.</th>
-      <th>Importe</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    ${items}
-  </tbody>
-</table>
-
-${
-  itemDiscount
-    ? `<p class="right">
-         Descuento total:
-         <b>${money(itemDiscount)}</b>
-       </p>`
-    : ''
-}
-
-<div class="summary">
-
-  <p class="right">
-    <b>Total: ${money(s.total)}</b>
-  </p>
-
-  <p>
-    Pago: ${paymentText}
-  </p>
-
-  ${
-    s.payment === 'Efectivo' ||
-    s.payments?.some(p => p.method === 'Efectivo')
-      ? `
-        <p>
-          Recibido efectivo:
-          ${money(s.received || 0)}
-        </p>
-
-        <p class="right change">
-          Vuelto:
-          ${money(s.change || 0)}
-        </p>
-      `
-      : ''
-  }
-
-</div>
-
-<p class="footer">
-  DOCUMENTO INTERNO · SMARTTUCLICK
-</p>
-
-</body>
-</html>
-`;
-
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-
-  w.onload = function () {
-    setTimeout(() => {
-      w.focus();
-      w.print();
-    }, 300);
-  };
-
-  // Algunos navegadores no disparan onload después de document.write.
-  setTimeout(() => {
-    try {
-      w.focus();
-      w.print();
-    } catch (e) {
-      console.error('Error al imprimir:', e);
+    if (!s) {
+        alert('No se encontró la venta para imprimir.');
+        return;
     }
-  }, 800);
+
+    // Abrir la ventana inmediatamente para evitar el bloqueo de ventanas emergentes.
+    const w = window.open('', '_blank', 'width=520,height=760');
+
+    if (!w) {
+        alert('El navegador bloqueó la impresión. Permite las ventanas emergentes para SmartTuClick y vuelve a intentarlo.');
+        return;
+    }
+
+    const items = s.items.map(i => {
+        const base = Number(i.qty) * Number(i.price);
+        const d = Number(i.discount || 0);
+        const disc = i.discountType === '%' ? base * d / 100 : d;
+        const total = Math.max(0, base - disc);
+
+        return `<tr>
+            <td>${esc(i.name)}</td>
+            <td>${i.qty}</td>
+            <td>${money(i.price)}</td>
+            <td>${disc ? money(disc) : '-'}</td>
+            <td>${money(total)}</td>
+        </tr>`;
+    }).join('');
+
+    const itemDiscount = s.items.reduce((a, i) => {
+        const base = Number(i.qty) * Number(i.price);
+        const d = Number(i.discount || 0);
+        return a + (i.discountType === '%' ? base * d / 100 : d);
+    }, 0);
+
+    const ticket = format === 'TICKET';
+
+    const payments = Array.isArray(s.payments) && s.payments.length > 0
+        ? s.payments.map(p => `${esc(p.method)} ${money(p.amount)}`).join(' · ')
+        : esc(s.payment || 'No especificado');
+
+    const cashPayment = Array.isArray(s.payments)
+        ? s.payments.some(p => p.method === 'Efectivo')
+        : s.payment === 'Efectivo';
+
+    const html = `<!doctype html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>${esc(s.doc || 'Venta')}</title>
+        <style>
+            @page {
+                size: ${ticket ? '80mm auto' : 'A4'};
+                margin: ${ticket ? '4mm' : '12mm'};
+            }
+            * { box-sizing: border-box; }
+            body {
+                font: 13px Arial, sans-serif;
+                color: #111;
+                margin: auto;
+                padding: ${ticket ? '4px' : '18px'};
+                max-width: ${ticket ? '72mm' : '100%'};
+            }
+            h2 { text-align: center; margin: 0 0 8px; }
+            p { margin: 5px 0; overflow-wrap: anywhere; }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 12px;
+                font-size: ${ticket ? '10px' : '13px'};
+            }
+            td, th {
+                padding: 5px 3px;
+                border-bottom: 1px solid #ddd;
+                text-align: left;
+                overflow-wrap: anywhere;
+            }
+            .center { text-align: center; }
+            .right { text-align: right; }
+            .summary {
+                margin-top: 12px;
+                border-top: 1px solid #aaa;
+                padding-top: 8px;
+            }
+            .change {
+                font-size: 15px;
+                font-weight: bold;
+            }
+            .no-print { margin-bottom: 15px; }
+            @media print {
+                .no-print { display: none !important; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="no-print">
+            <button onclick="window.print()">Imprimir</button>
+            <button onclick="window.close()">Cerrar</button>
+        </div>
+
+        <h2>${esc(db.company.name)}</h2>
+        <p class="center"><b>${esc(s.doc || '')}</b> · ${esc(s.docType || '')}</p>
+        <p>Cliente: ${esc(s.client || 'Público general')}</p>
+        <p>Tienda: ${esc(s.store || '')}</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cant.</th>
+                    <th>Precio</th>
+                    <th>Dscto.</th>
+                    <th>Importe</th>
+                </tr>
+            </thead>
+            <tbody>${items}</tbody>
+        </table>
+
+        ${itemDiscount ? `<p class="right">Descuento total: <b>${money(itemDiscount)}</b></p>` : ''}
+
+        <div class="summary">
+            <p class="right"><b>Total: ${money(s.total)}</b></p>
+            <p>Pago: ${payments}</p>
+            ${cashPayment ? `
+                <p>Recibido efectivo: ${money(s.received || 0)}</p>
+                <p class="right change">Vuelto: ${money(s.change || 0)}</p>
+            ` : ''}
+        </div>
+
+        <p class="center" style="margin-top:20px">
+            DOCUMENTO INTERNO · SUNAT PROTOTIPO
+        </p>
+    </body>
+    </html>`;
+
+    try {
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+
+        // Esperar a que el navegador termine de renderizar el documento.
+        setTimeout(() => {
+            if (!w.closed) {
+                w.focus();
+                w.print();
+            }
+        }, 700);
+    } catch (error) {
+        w.close();
+        console.error('Error al preparar la impresión:', error);
+        alert('No se pudo preparar la impresión. Revisa la consola del navegador.');
+    }
 }
+
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('modalHost')){closeModal();return}if(e.key==='F2'){e.preventDefault();focusBarcode();}})
 function heldSales(){let rows=db.held.slice().reverse().map(h=>`<tr><td>${new Date(h.date).toLocaleString()}</td><td>${h.items.reduce((a,i)=>a+i.qty,0)} und.</td><td><button class="btn good" onclick="restoreHeld(${h.id})">Recuperar</button></td></tr>`).join('')||empty(3);modal('Ventas en espera',`<table class="table"><tr><th>Fecha</th><th>Unidades</th><th></th></tr>${rows}</table>`,`<button class="btn alt" onclick="closeModal()">Cerrar</button>`)}
 function restoreHeld(id){if(db.cart.length)return alert('Vacía la venta actual antes de recuperar otra.');let h=db.held.find(x=>x.id===id);if(!h)return;db.cart=clone(h.items);db.held=db.held.filter(x=>x.id!==id);closeModal();save();render()}
