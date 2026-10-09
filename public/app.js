@@ -491,7 +491,7 @@ function downloadSaleXml(id){let s=saleById(id);if(!s)return;let xml=`<?xml vers
 function downloadSalePdf(id){printSaleFormat(id,'A4')}
 
 function printSaleFormat(id, format = 'A4') {
-    const s = saleById(id);
+    const s = db.sales.find(x => String(x.id) === String(id));
 
     if (!s) {
         alert('No se encontró la venta para imprimir.');
