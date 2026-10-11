@@ -786,3 +786,28 @@ textarea:focus{
   }
 }
 
+/* VendiX: selector de tienda en móviles */
+@media (max-width: 720px) {
+  .appbar {
+    flex-wrap: wrap;
+    height: auto;
+  }
+
+  .appbar-title {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .appbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .appbar-actions .storeSelect {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
