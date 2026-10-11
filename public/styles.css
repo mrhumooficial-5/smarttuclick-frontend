@@ -811,3 +811,67 @@ textarea:focus{
   }
 }
 
+/* VendiX: barra móvil más ordenada */
+@media (max-width: 720px) {
+  .appbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .appbar-title {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .appbar-title strong {
+    display: block;
+    font-size: 14px;
+  }
+
+  .appbar-title span {
+    display: block;
+    font-size: 11px;
+  }
+
+  .appbar-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .appbar-actions .storeSelect {
+    display: block;
+    flex: 1 1 150px;
+    width: auto;
+    min-width: 0;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  }
+
+  .appbar-actions .storeSelect:focus {
+    outline: 2px solid #93c5fd;
+    outline-offset: 1px;
+  }
+
+  .appbar-actions .pill {
+    font-size: 11px;
+    padding: 7px 9px;
+  }
+
+  .appbar-actions .logout-btn {
+    padding: 9px 12px;
+  }
+}
+
