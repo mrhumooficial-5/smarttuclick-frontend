@@ -2784,14 +2784,6 @@ function saveStore() {
     active: true
   });
 
-  db.stores.push({
-  id: storeId,
-  name: storeName,
-  address: storeAddress,
-  code: 'T' + storeId,
-  active: true
-});
-
   closeModal();
   save();
   render();
