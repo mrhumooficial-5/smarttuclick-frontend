@@ -875,3 +875,90 @@ textarea:focus{
     display: none !important;
   }
 }
+/* Tarjetas de tiendas VendiX */
+.store-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.store-card {
+  background: #fff;
+  border: 1px solid #dbe5f5;
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 3px 12px rgba(20, 40, 80, 0.05);
+}
+
+.store-card-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.store-card-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #eaf1ff;
+  color: #2563eb;
+  font-size: 25px;
+}
+
+.store-card-info strong {
+  display: block;
+  font-size: 16px;
+  color: #172033;
+  margin-bottom: 7px;
+  overflow-wrap: anywhere;
+}
+
+.store-card-status {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 9px;
+}
+
+.store-card-status.active {
+  color: #15803d;
+}
+
+.store-card-status.inactive {
+  color: #b45309;
+}
+
+.store-card-detail {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
+.store-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid #edf1f7;
+  padding-top: 14px;
+}
+
+.store-card-actions .btn {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .store-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .store-card-actions .btn {
+    flex: 1;
+  }
+}
