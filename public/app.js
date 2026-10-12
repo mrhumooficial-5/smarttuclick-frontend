@@ -482,8 +482,27 @@ clients:()=>`<div class="toolbar"><button class="btn good" onclick="clientForm()
 users:()=>`<div class="toolbar"><button class="btn good" onclick="userForm()">+ Nuevo usuario</button></div><div class="card"><table class="table"><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Permisos</th><th>Acciones</th></tr>${db.users.map(u=>`<tr><td>${esc(u.user)}</td><td>${esc(u.name)}</td><td><span class="tag">${esc(u.role)}</span></td><td>${u.active?'Activo':'Inactivo'}</td><td>${(db.roles[u.role]||[]).includes('*')?'Todos':(db.roles[u.role]||[]).length+' módulos'}</td><td><button class="btn alt" onclick="editUser(${u.id})">Editar</button> <button class="btn ${u.active?'warn':'good'}" onclick="toggleUser(${u.id})">${u.active?'Desactivar':'Activar'}</button></td></tr>`).join('')}</table></div>`,
 sales:()=>`<div class="toolbar"><input class="input grow" id="salesSearch" placeholder="Buscar comprobante/cliente" oninput="salesFilter(this.value)"><button class="btn alt" onclick="exportCSV()">Exportar CSV</button></div><div class="card"><table class="table"><tbody id="salesRows"><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th><th></th></tr>${salesRows()}</tbody></table></div>`,
 reports:()=>{let total=db.sales.filter(s=>s.status!=='ANULADA').reduce((a,s)=>a+s.total,0),units=db.sales.reduce((a,s)=>a+s.items.reduce((b,i)=>b+i.qty,0),0),buy=db.purchases.reduce((a,p)=>a+p.total,0),margin=db.sales.filter(s=>s.status!=='ANULADA').reduce((a,s)=>a+s.items.reduce((b,i)=>b+(i.price-i.cost)*i.qty,0),0);return `<div class="grid"><div class="card">Ventas<div class="kpi">${money(total)}</div></div><div class="card">Unidades<div class="kpi">${units}</div></div><div class="card">Compras<div class="kpi">${money(buy)}</div></div><div class="card">Margen estimado<div class="kpi">${money(margin)}</div></div></div><div class="grid section"><div class="card span2"><b>Ventas por medio de pago</b>${['Efectivo','Yape','Plin','Izipay','Tarjeta','Transferencia'].map(m=>{let n=db.sales.filter(s=>s.payment===m&&s.status!=='ANULADA').reduce((a,s)=>a+s.total,0);return `<div class="listrow"><span>${m}</span><b>${money(n)}</b></div>`}).join('')}</div><div class="card"><b>Productos bajo mínimo</b>${db.products.filter(p=>stockOf(p)<=p.min).map(p=>`<div class="listrow"><span>${esc(p.name)}</span><b>${stockOf(p)}</b></div>`).join('')||'<div class="empty">Sin alertas.</div>'}</div></div><div class="section card"><b>Reportes preparados</b><p class="muted">Ventas por fecha/producto/cliente/usuario, compras, caja, Kardex, stock, utilidad y puntos. Exportación CSV funciona en esta demo; Excel/PDF quedan como adaptadores.</p></div>`},
-settings:()=>`<div class="grid"><div class="card"><h3>Empresa</h3><div class="formgrid"><input id="companyName" class="input" value="${esc(db.company.name)}" placeholder="Razón social"><input id="companyRuc" class="input" value="${esc(db.company.ruc)}" placeholder="RUC"><input id="igv" class="input" type="number" value="${db.company.igv*100}" placeholder="IGV %"><input id="storeName" class="input" value="${esc(currentStore().name)}" placeholder="Tienda"></div><button class="btn" onclick="saveSettings()">Guardar</button></div><div class="card print-config-card"><h3>Datos de Plantillas de Impresión</h3><p class="muted">Configura los mensajes y revisa el comprobante en tiempo real, como en SmartClic.</p><div class="print-config-layout"><div class="print-editor"><details class="print-accordion" open><summary>Mensaje de Cabecera</summary><div class="print-editor-body"><label>Texto de cabecera</label><textarea id="printHeader" class="input" placeholder="Ej. BIENVENIDO A VENDIX">${esc(db.settings.printHeader||'')}</textarea><label class="print-switch"><input type="checkbox" id="printHeaderOn" ${db.settings.printHeaderOn!==false?'checked':''}> ACTIVAR</label></div></details><details class="print-accordion"><summary>Mensaje Superior</summary><div class="print-editor-body"><label>Texto superior</label><textarea id="printTop" class="input" placeholder="Texto debajo de los datos del comprobante">${esc(db.settings.printTop||'')}</textarea><label class="print-switch"><input type="checkbox" id="printTopOn" ${db.settings.printTopOn!==false?'checked':''}> ACTIVAR</label></div></details><details class="print-accordion"><summary>Mensaje Inferior</summary><div class="print-editor-body"><label>Texto inferior</label><textarea id="printBottom" class="input" placeholder="Ej. Cuentas bancarias o información adicional">${esc(db.settings.printBottom||'')}</textarea><label class="print-switch"><input type="checkbox" id="printBottomOn" ${db.settings.printBottomOn!==false?'checked':''}> ACTIVAR</label></div></details><details class="print-accordion"><summary>Mensaje de Despedida</summary><div class="print-editor-body"><label>Texto de despedida</label><textarea id="printFarewell" class="input" placeholder="Ej. Gracias por su preferencia">${esc(db.settings.printFarewell||'Gracias por su preferencia.')}</textarea><label class="print-switch"><input type="checkbox" id="printFarewellOn" ${db.settings.printFarewellOn!==false?'checked':''}> ACTIVAR</label></div></details><div class="print-logo-settings"><b>Logotipo de la empresa</b><p class="muted">Sube el logo que aparecerá en el comprobante.</p><input id="printLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="input" onchange="loadPrintLogo(this)">${db.settings.printLogo?`<img src="${db.settings.printLogo}" alt="Logo actual" style="max-width:130px;max-height:70px;object-fit:contain;margin-top:8px"> <button class="btn alt" onclick="removePrintLogo()">Quitar logo</button>`:''}</div><button class="btn good" onclick="saveSettings()">Guardar configuración de impresión</button></div><div class="print-preview-wrap"><div class="print-preview-title">VISTA PREVIA DEL COMPROBANTE</div><div class="print-preview-paper"><div class="print-preview-brand">${db.settings.printLogo?`<img src="${db.settings.printLogo}" alt="Logo">`: '<div class="print-preview-logo-placeholder">LOGO</div>'}<div class="print-preview-doc"><small>RUC ${esc(db.company.ruc||'00000000000')}</small><b>COMPROBANTE</b><small>F001-000056</small></div></div><div class="print-preview-company"><b>${esc(db.company.name||'EMPRESA SIN REGISTRAR')}</b><br>${esc(currentStore().name||'DIRECCIÓN DE LA EMPRESA')}</div>${db.settings.printHeaderOn!==false&&db.settings.printHeader?`<div class="print-preview-message">${esc(db.settings.printHeader).replace(/\n/g,'<br>')}</div>`:''}${db.settings.printTopOn!==false&&db.settings.printTop?`<div class="print-preview-message">${esc(db.settings.printTop).replace(/\n/g,'<br>')}</div>`:''}<div class="print-preview-info"><div><b>CLIENTE:</b> CLIENTE VARIOS<br><b>DNI:</b> 00000000<br><b>DIRECCIÓN:</b></div><div><b>FECHA EMISIÓN:</b> 09/10/2026<br><b>MONEDA:</b> SOLES<br><b>FORMA DE PAGO:</b> CONTADO</div></div><table class="print-preview-table"><thead><tr><th>N°</th><th>CANT.</th><th>DESCRIPCIÓN</th><th>P. UNIT.</th><th>TOTAL</th></tr></thead><tbody><tr><td>1</td><td>2</td><td>Producto de ejemplo</td><td>10.00</td><td>20.00</td></tr><tr><td>2</td><td>1</td><td>Otro producto</td><td>15.00</td><td>15.00</td></tr></tbody></table><div class="print-preview-total"><b>TOTAL: S/ 35.00</b></div>${db.settings.printBottomOn!==false&&db.settings.printBottom?`<div class="print-preview-message">${esc(db.settings.printBottom).replace(/\n/g,'<br>')}</div>`:''}${db.settings.printFarewellOn!==false&&db.settings.printFarewell?`<div class="print-preview-message">${esc(db.settings.printFarewell).replace(/\n/g,'<br>')}</div>`:''}<div class="print-preview-qr">QR / CÓDIGO DEL COMPROBANTE</div></div><p class="muted">Vista referencial. Los datos reales se colocan al imprimir una venta.</p></div></div><style>.print-config-card{grid-column:1/-1}.print-config-layout{display:grid;grid-template-columns:minmax(300px,1fr) minmax(320px,.95fr);gap:22px;align-items:start}.print-accordion{border-bottom:1px solid #d8dce5}.print-accordion summary{padding:15px 10px;cursor:pointer;font-weight:700;color:#263653;list-style:none}.print-accordion summary:after{content:'⌄';float:right;color:#2563eb}.print-accordion[open] summary:after{content:'⌃'}.print-editor-body{padding:8px 10px 16px}.print-editor-body textarea{min-height:80px;width:100%;margin:8px 0}.print-switch{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#26874a}.print-logo-settings{padding:16px 10px;border-bottom:1px solid #d8dce5}.print-preview-wrap{background:#f3f5f9;border:1px solid #dce1e9;border-radius:8px;padding:14px;position:sticky;top:12px}.print-preview-title{font-size:12px;font-weight:800;letter-spacing:.05em;color:#526079;margin-bottom:10px}.print-preview-paper{background:#fff;border:1px solid #d7dbe2;border-radius:5px;padding:14px;box-shadow:0 2px 8px #18243a12;font-size:9px;color:#20242b;min-height:490px}.print-preview-brand{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}.print-preview-brand img{max-width:100px;max-height:55px;object-fit:contain}.print-preview-logo-placeholder{width:78px;height:40px;border:1px dashed #adb5c3;border-radius:4px;display:grid;place-items:center;color:#8992a2;font-size:10px}.print-preview-doc{border:2px solid #777;border-radius:9px;text-align:center;padding:6px;min-width:110px;display:flex;flex-direction:column;gap:3px}.print-preview-doc b{background:#e5e7eb;font-size:11px;padding:4px}.print-preview-company{font-size:10px;margin:8px 0 12px}.print-preview-message{border:1px solid #ed3345;border-radius:8px;padding:8px;text-align:center;font-weight:700;color:#d92335;margin:7px 0;overflow-wrap:anywhere}.print-preview-info{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}.print-preview-info>div{border:1px solid #777;border-radius:8px;padding:7px;line-height:1.5}.print-preview-table{width:100%;border-collapse:collapse;font-size:8px;margin:12px 0;table-layout:auto}.print-preview-table th,.print-preview-table td{border-bottom:1px solid #d7dbe2;padding:5px 2px;text-align:left}.print-preview-total{text-align:right;padding:10px 0;border-top:1px solid #777;font-size:12px}.print-preview-qr{margin:15px auto 0;border:1px dashed #aab1bf;width:120px;height:48px;display:grid;place-items:center;color:#6b7280;font-size:9px;text-align:center}@media(max-width:850px){.print-config-layout{grid-template-columns:1fr}.print-preview-wrap{position:static}.print-preview-paper{max-width:460px;margin:auto}}</style></div><div class="section card"><div class="section-title"><b>Tiendas, almacenes y cajas</b><button class="btn good" onclick="storeForm()">+ Nueva tienda</button></div><table class="table"><tr><th>Tienda</th><th>Almacenes</th><th>Cajas</th>
-<th>Estado</th><th>Acciones</th></tr>${db.stores.map(s=>`<tr><td>${esc(s.name)}</td><td>${db.warehouses.filter(w=>w.storeId===s.id).map(w=>esc(w.name)).join(', ')}</td><td>${db.registers.filter(r=>r.storeId===s.id).map(r=>esc(r.name)).join(', ')}</td><td>${s.active?'Activa':'Inactiva'}</td><td><button class="btn" onclick="editStore('${s.id}')">Editar</button> <button class="btn" onclick="toggleStore('${s.id}')">${s.active?'Desactivar':'Activar'}</button> <button class="btn danger" onclick="deleteStore('${s.id}')">Eliminar</button></td></tr>`).join('')}</table></div>`};
+settings:()=>`<div class="grid"><div class="card"><h3>Empresa</h3><div class="formgrid"><input id="companyName" class="input" value="${esc(db.company.name)}" placeholder="Razón social"><input id="companyRuc" class="input" value="${esc(db.company.ruc)}" placeholder="RUC"><input id="igv" class="input" type="number" value="${db.company.igv*100}" placeholder="IGV %"><input id="storeName" class="input" value="${esc(currentStore().name)}" placeholder="Tienda"></div><button class="btn" onclick="saveSettings()">Guardar</button></div><div class="card print-config-card"><h3>Datos de Plantillas de Impresión</h3><p class="muted">Configura los mensajes y revisa el comprobante en tiempo real, como en SmartClic.</p><div class="print-config-layout"><div class="print-editor"><details class="print-accordion" open><summary>Mensaje de Cabecera</summary><div class="print-editor-body"><label>Texto de cabecera</label><textarea id="printHeader" class="input" placeholder="Ej. BIENVENIDO A VENDIX">${esc(db.settings.printHeader||'')}</textarea><label class="print-switch"><input type="checkbox" id="printHeaderOn" ${db.settings.printHeaderOn!==false?'checked':''}> ACTIVAR</label></div></details><details class="print-accordion"><summary>Mensaje Superior</summary><div class="print-editor-body"><label>Texto superior</label><textarea id="printTop" class="input" placeholder="Texto debajo de los datos del comprobante">${esc(db.settings.printTop||'')}</textarea><label class="print-switch"><input type="checkbox" id="printTopOn" ${db.settings.printTopOn!==false?'checked':''}> ACTIVAR</label></div></details><details class="print-accordion"><summary>Mensaje Inferior</summary><div class="print-editor-body"><label>Texto inferior</label><textarea id="printBottom" class="input" placeholder="Ej. Cuentas bancarias o información adicional">${esc(db.settings.printBottom||'')}</textarea><label class="print-switch"><input type="checkbox" id="printBottomOn" ${db.settings.printBottomOn!==false?'checked':''}> ACTIVAR</label></div></details><details class="print-accordion"><summary>Mensaje de Despedida</summary><div class="print-editor-body"><label>Texto de despedida</label><textarea id="printFarewell" class="input" placeholder="Ej. Gracias por su preferencia">${esc(db.settings.printFarewell||'Gracias por su preferencia.')}</textarea><label class="print-switch"><input type="checkbox" id="printFarewellOn" ${db.settings.printFarewellOn!==false?'checked':''}> ACTIVAR</label></div></details><div class="print-logo-settings"><b>Logotipo de la empresa</b><p class="muted">Sube el logo que aparecerá en el comprobante.</p><input id="printLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="input" onchange="loadPrintLogo(this)">${db.settings.printLogo?`<img src="${db.settings.printLogo}" alt="Logo actual" style="max-width:130px;max-height:70px;object-fit:contain;margin-top:8px"> <button class="btn alt" onclick="removePrintLogo()">Quitar logo</button>`:''}</div><button class="btn good" onclick="saveSettings()">Guardar configuración de impresión</button></div><div class="print-preview-wrap"><div class="print-preview-title">VISTA PREVIA DEL COMPROBANTE</div><div class="print-preview-paper"><div class="print-preview-brand">${db.settings.printLogo?`<img src="${db.settings.printLogo}" alt="Logo">`: '<div class="print-preview-logo-placeholder">LOGO</div>'}<div class="print-preview-doc"><small>RUC ${esc(db.company.ruc||'00000000000')}</small><b>COMPROBANTE</b><small>F001-000056</small></div></div><div class="print-preview-company"><b>${esc(db.company.name||'EMPRESA SIN REGISTRAR')}</b><br>${esc(currentStore().name||'DIRECCIÓN DE LA EMPRESA')}</div>${db.settings.printHeaderOn!==false&&db.settings.printHeader?`<div class="print-preview-message">${esc(db.settings.printHeader).replace(/\n/g,'<br>')}</div>`:''}${db.settings.printTopOn!==false&&db.settings.printTop?`<div class="print-preview-message">${esc(db.settings.printTop).replace(/\n/g,'<br>')}</div>`:''}<div class="print-preview-info"><div><b>CLIENTE:</b> CLIENTE VARIOS<br><b>DNI:</b> 00000000<br><b>DIRECCIÓN:</b></div><div><b>FECHA EMISIÓN:</b> 09/10/2026<br><b>MONEDA:</b> SOLES<br><b>FORMA DE PAGO:</b> CONTADO</div></div><table class="print-preview-table"><thead><tr><th>N°</th><th>CANT.</th><th>DESCRIPCIÓN</th><th>P. UNIT.</th><th>TOTAL</th></tr></thead><tbody><tr><td>1</td><td>2</td><td>Producto de ejemplo</td><td>10.00</td><td>20.00</td></tr><tr><td>2</td><td>1</td><td>Otro producto</td><td>15.00</td><td>15.00</td></tr></tbody></table><div class="print-preview-total"><b>TOTAL: S/ 35.00</b></div>${db.settings.printBottomOn!==false&&db.settings.printBottom?`<div class="print-preview-message">${esc(db.settings.printBottom).replace(/\n/g,'<br>')}</div>`:''}${db.settings.printFarewellOn!==false&&db.settings.printFarewell?`<div class="print-preview-message">${esc(db.settings.printFarewell).replace(/\n/g,'<br>')}</div>`:''}<div class="print-preview-qr">QR / CÓDIGO DEL COMPROBANTE</div></div><p class="muted">Vista referencial. Los datos reales se colocan al imprimir una venta.</p></div></div><style>.print-config-card{grid-column:1/-1}.print-config-layout{display:grid;grid-template-columns:minmax(300px,1fr) minmax(320px,.95fr);gap:22px;align-items:start}.print-accordion{border-bottom:1px solid #d8dce5}.print-accordion summary{padding:15px 10px;cursor:pointer;font-weight:700;color:#263653;list-style:none}.print-accordion summary:after{content:'⌄';float:right;color:#2563eb}.print-accordion[open] summary:after{content:'⌃'}.print-editor-body{padding:8px 10px 16px}.print-editor-body textarea{min-height:80px;width:100%;margin:8px 0}.print-switch{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#26874a}.print-logo-settings{padding:16px 10px;border-bottom:1px solid #d8dce5}.print-preview-wrap{background:#f3f5f9;border:1px solid #dce1e9;border-radius:8px;padding:14px;position:sticky;top:12px}.print-preview-title{font-size:12px;font-weight:800;letter-spacing:.05em;color:#526079;margin-bottom:10px}.print-preview-paper{background:#fff;border:1px solid #d7dbe2;border-radius:5px;padding:14px;box-shadow:0 2px 8px #18243a12;font-size:9px;color:#20242b;min-height:490px}.print-preview-brand{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}.print-preview-brand img{max-width:100px;max-height:55px;object-fit:contain}.print-preview-logo-placeholder{width:78px;height:40px;border:1px dashed #adb5c3;border-radius:4px;display:grid;place-items:center;color:#8992a2;font-size:10px}.print-preview-doc{border:2px solid #777;border-radius:9px;text-align:center;padding:6px;min-width:110px;display:flex;flex-direction:column;gap:3px}.print-preview-doc b{background:#e5e7eb;font-size:11px;padding:4px}.print-preview-company{font-size:10px;margin:8px 0 12px}.print-preview-message{border:1px solid #ed3345;border-radius:8px;padding:8px;text-align:center;font-weight:700;color:#d92335;margin:7px 0;overflow-wrap:anywhere}.print-preview-info{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}.print-preview-info>div{border:1px solid #777;border-radius:8px;padding:7px;line-height:1.5}.print-preview-table{width:100%;border-collapse:collapse;font-size:8px;margin:12px 0;table-layout:auto}.print-preview-table th,.print-preview-table td{border-bottom:1px solid #d7dbe2;padding:5px 2px;text-align:left}.print-preview-total{text-align:right;padding:10px 0;border-top:1px solid #777;font-size:12px}.print-preview-qr{margin:15px auto 0;border:1px dashed #aab1bf;width:120px;height:48px;display:grid;place-items:center;color:#6b7280;font-size:9px;text-align:center}@media(max-width:850px){.print-config-layout{grid-template-columns:1fr}.print-preview-wrap{position:static}.print-preview-paper{max-width:460px;margin:auto}}</style></div><div class="section card"><div class="section-title"><b>Tiendas, almacenes y cajas</b><button class="btn good" onclick="storeForm()">+ Nueva tienda</button></div><div class="store-cards">${db.stores.map(s=>`
+  <div class="store-card">
+    <div class="store-card-info">
+      <div class="store-card-icon">⌂</div>
+      <div>
+        <strong>${esc(s.name)}</strong>
+        <div class="store-card-status ${s.active?'active':'inactive'}">
+          ${s.active?'Tienda activa':'Tienda inactiva'}
+        </div>
+        <div class="store-card-detail">
+          Almacenes: ${db.warehouses.filter(w=>String(w.storeId)===String(s.id)).map(w=>esc(w.name)).join(', ')||'Sin almacenes'}
+        </div>
+      </div>
+    </div>
+    <div class="store-card-actions">
+      <button class="btn" onclick="editStore('${s.id}')">Editar</button>
+      <button class="btn" onclick="toggleStore('${s.id}')">${s.active?'Desactivar':'Activar'}</button>
+      <button class="btn danger" onclick="deleteStore('${s.id}')">Eliminar</button>
+    </div>
+  </div>
+`).join('')}</div></div>`};
 function empty(n){return `<tr><td colspan="${n}" class="empty">Sin registros.</td></tr>`}
 function cartTotal(){return db.cart.reduce((a,i)=>{let base=i.qty*i.price,d=Number(i.discount||0);let disc=i.discountType==='%'?base*d/100:d;return a+Math.max(0,base-disc)},0)}
 
@@ -2715,6 +2734,13 @@ function storeForm() {
           class="input"
           placeholder="Nombre del almacén"
         >
+
+        <input
+  id="std"
+  class="input"
+  placeholder="Dirección de la tienda"
+>
+
       </div>
     `,
     `
@@ -2727,6 +2753,9 @@ function storeForm() {
 
 function saveStore() {
   const storeName = document.getElementById('stn').value.trim();
+
+  const storeAddress = document.getElementById('std').value.trim();
+
   const warehouseName = document.getElementById('whn').value.trim();
 
   if (!storeName) {
@@ -2740,11 +2769,12 @@ function saveStore() {
   const storeId = uid();
 
   db.stores.push({
-    id: storeId,
-    name: storeName,
-    code: 'T' + storeId,
-    active: true
-  });
+  id: storeId,
+  name: storeName,
+  address: storeAddress,
+  code: 'T' + storeId,
+  active: true
+});
 
   db.warehouses.push({
     id: uid(),
@@ -2754,41 +2784,68 @@ function saveStore() {
     active: true
   });
 
+  db.stores.push({
+  id: storeId,
+  name: storeName,
+  address: storeAddress,
+  code: 'T' + storeId,
+  active: true
+});
+
   closeModal();
   save();
   render();
 }
 
-function editStore(id){
+function editStore(id) {
   const s = db.stores.find(x => String(x.id) === String(id));
-  if(!s) return alert('No se encontró la tienda');
+  if (!s) return alert('No se encontró la tienda');
 
   const warehouses = db.warehouses.filter(w => String(w.storeId) === String(s.id));
-  const registers = db.registers.filter(r => String(r.storeId) === String(s.id));
+  const mainWarehouse = warehouses[0];
 
   modal(
     'Editar tienda',
     `<div class="formgrid">
-      <input id="editStoreName" class="input" placeholder="Nombre de la tienda" value="${esc(s.name)}">
-      <input id="editStoreCode" class="input" placeholder="Código" value="${esc(s.code || '')}">
-      <p class="muted">Almacenes: ${warehouses.map(w => esc(w.name)).join(', ') || 'Ninguno'}</p>
-      <p class="muted">Cajas: ${registers.map(r => esc(r.name)).join(', ') || 'Ninguna'}</p>
+      <input id="editStoreName" class="input"
+        placeholder="Nombre de la tienda"
+        value="${esc(s.name)}">
+
+      <input id="editStoreAddress" class="input"
+        placeholder="Dirección de la tienda"
+        value="${esc(s.address || '')}">
+
+      <input id="editWarehouseName" class="input"
+        placeholder="Nombre del almacén"
+        value="${esc(mainWarehouse?.name || '')}">
     </div>`,
-    `<button class="btn good" onclick="saveEditedStore('${s.id}')">Guardar cambios</button>`
+    `<button class="btn good" onclick="saveEditedStore('${s.id}')">
+      Guardar cambios
+    </button>`
   );
 }
 
-function saveEditedStore(id){
+function saveEditedStore(id) {
   const s = db.stores.find(x => String(x.id) === String(id));
-  if(!s) return alert('No se encontró la tienda');
+  if (!s) return alert('No se encontró la tienda');
 
   const name = document.getElementById('editStoreName').value.trim();
-  const code = document.getElementById('editStoreCode').value.trim();
+  const address = document.getElementById('editStoreAddress').value.trim();
+  const warehouseName = document.getElementById('editWarehouseName').value.trim();
 
-  if(!name) return alert('El nombre de la tienda es obligatorio');
+  if (!name) return alert('El nombre de la tienda es obligatorio');
+  if (!warehouseName) return alert('El nombre del almacén es obligatorio');
 
   s.name = name;
-  s.code = code || s.code || ('T' + s.id);
+  s.address = address;
+
+  const warehouse = db.warehouses.find(
+    w => String(w.storeId) === String(s.id)
+  );
+
+  if (warehouse) {
+    warehouse.name = warehouseName;
+  }
 
   save();
   closeModal();
@@ -2811,78 +2868,174 @@ function toggleStore(id){
   render();
 }
 
-function deleteStore(id){
+
+
+
+function deleteStore(id) {
   const s = db.stores.find(x => String(x.id) === String(id));
-  if(!s) return alert('No se encontró la tienda');
+  if (!s) return alert('No se encontró la tienda');
 
-  const hasWarehouses = db.warehouses.some(w => String(w.storeId) === String(s.id));
-  const hasRegisters = db.registers.some(r => String(r.storeId) === String(s.id));
-
-  if(hasWarehouses || hasRegisters){
-    return alert('No se puede eliminar esta tienda porque tiene almacenes o cajas vinculados. Desactívala para conservar sus datos.');
-  }
-
-  if(db.stores.filter(x => x.active).length <= 1 && s.active){
-    return alert('No puedes eliminar la única tienda activa');
-  }
-
-  if(!confirm(`¿Eliminar definitivamente la tienda "${s.name}"?`)) return;
+  if (!confirm(`¿Seguro que deseas borrar la tienda "${s.name}"?`)) return;
 
   db.stores = db.stores.filter(x => String(x.id) !== String(id));
   save();
   render();
 }
+
+
+
 function modal(title,body,actions){document.getElementById('modalHost')?.remove();document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="modalHost"><div class="modalbox"><div class="section-title"><h3>${esc(title)}</h3><button class="iconbtn" onclick="closeModal()">×</button></div>${body}<div class="modalactions">${actions}<button class="btn alt" onclick="closeModal()">Cancelar</button></div></div></div>`)}function closeModal(){document.getElementById('modalHost')?.remove()}
 function resetDemo(){if(confirm('Esto borrará los datos locales de SmartTuClick y volverá a la demo inicial.')){localStorage.removeItem(KEY);db=clone(seed);session=null;localStorage.removeItem(SESSION_KEY);view='dashboard';render()}}
-function editUser(id){
-  let u=db.users.find(x=>x.id===id);
-  if(!u)return;
+function editUser(id) {
+  const u = db.users.find(x => String(x.id) === String(id));
+  if (!u) return alert('No se encontró el usuario.');
 
-  modal('Modificar usuario',`
+  const assignments = u.storeAssignments?.length
+    ? u.storeAssignments
+    : (u.storeIds || []).map(storeId => ({
+        storeId,
+        warehouseId: (u.warehouseIds || []).find(wid =>
+          db.warehouses.some(w =>
+            String(w.id) === String(wid) &&
+            String(w.storeId) === String(storeId)
+          )
+        ) || ''
+      }));
+
+  const rows = assignments.length ? assignments : [{}];
+
+  modal('Editar usuario', `
     <div class="formgrid">
       <input id="un" class="input" value="${esc(u.name)}" placeholder="Nombre">
       <input id="uu" class="input" value="${esc(u.user)}" placeholder="Usuario">
       <input id="up" class="input" type="password" placeholder="Nueva contraseña (opcional)">
+
       <select id="ur" class="input">
-        ${Object.keys(db.roles).map(r=>`<option value="${esc(r)}" ${u.role===r?'selected':''}>${esc(r)}</option>`).join('')}
+        ${Object.keys(db.roles).map(r =>
+          `<option value="${esc(r)}" ${u.role === r ? 'selected' : ''}>${esc(r)}</option>`
+        ).join('')}
       </select>
+
       <select id="ua" class="input">
-        <option value="1" ${u.active?'selected':''}>Activo</option>
-        <option value="0" ${!u.active?'selected':''}>Inactivo</option>
+        <option value="1" ${u.active ? 'selected' : ''}>Activo</option>
+        <option value="0" ${!u.active ? 'selected' : ''}>Inactivo</option>
       </select>
     </div>
-  `,`
-    <button class="btn good" onclick="updateUser(${id})">Guardar cambios</button>
+
+    <h4 style="margin-top:18px">Tiendas y almacenes asignados</h4>
+
+    <div id="userAssignments">
+      ${rows.map((a, i) => `
+        <div class="card user-assignment" style="margin-top:12px">
+          <div class="formgrid">
+            <label>Tienda
+              <select class="input user-store"
+                onchange="refreshUserWarehouses(this)">
+                ${userStoreOptions(a.storeId ?? '')}
+              </select>
+            </label>
+            <label>Almacén
+              <select class="input user-warehouse">
+                ${userWarehouseOptions(a.storeId ?? '', a.warehouseId ?? '')}
+              </select>
+            </label>
+          </div>
+          ${i > 0 ? `<button type="button" class="btn danger"
+            onclick="removeUserAssignment(this)">Quitar asignación</button>` : ''}
+        </div>
+      `).join('')}
+    </div>
+
+    <button type="button" class="btn alt" style="margin-top:12px"
+      onclick="addUserAssignment()">+ Agregar otra tienda y almacén</button>
+  `, `
+    <button class="btn good" onclick="updateUser('${u.id}')">Guardar cambios</button>
+    <button class="btn danger" onclick="deleteUser('${u.id}')">Eliminar usuario</button>
   `);
 }
 
-function updateUser(id){
-  let u=db.users.find(x=>x.id===id);
-  if(!u)return;
+function updateUser(id) {
+  const u = db.users.find(x => String(x.id) === String(id));
+  if (!u) return alert('No se encontró el usuario.');
 
-  let name=document.getElementById('un').value.trim();
-  let user=document.getElementById('uu').value.trim();
-  let pass=document.getElementById('up').value.trim();
+  const name = document.getElementById('un').value.trim();
+  const username = document.getElementById('uu').value.trim();
+  const password = document.getElementById('up').value;
+  const role = document.getElementById('ur').value;
+  const active = document.getElementById('ua').value === '1';
 
-  if(!name||!user)return alert('Completa los datos');
+  if (!name || !username) return alert('Completa nombre y usuario.');
 
-  if(db.users.some(x=>x.id!==id&&x.user.toLowerCase()===user.toLowerCase()))
-    return alert('Ese usuario ya existe.');
+  if (db.users.some(x =>
+    String(x.id) !== String(id) &&
+    x.user.toLowerCase() === username.toLowerCase()
+  )) return alert('Ese usuario ya existe.');
 
-  u.name=name;
-  u.user=user;
+  if (u.id === session.id && !active) {
+    return alert('No puedes desactivar tu propio usuario.');
+  }
 
-  if(pass)u.password=pass;
+  const assignments = [];
 
-  u.role=document.getElementById('ur').value;
-  u.active=document.getElementById('ua').value==='1';
+  for (const row of document.querySelectorAll('#userAssignments .user-assignment')) {
+    const storeId = row.querySelector('.user-store').value;
+    const warehouseId = row.querySelector('.user-warehouse').value;
 
-  if(u.id===session.id)session=u;
+    const warehouse = db.warehouses.find(w =>
+      String(w.id) === String(warehouseId) &&
+      String(w.storeId) === String(storeId) &&
+      w.active !== false
+    );
 
-  audit('MODIFICAR','USUARIO',u.user);
+    if (!storeId || !warehouse) {
+      return alert('Revisa las tiendas y los almacenes asignados.');
+    }
 
+    if (!assignments.some(a =>
+      String(a.storeId) === String(storeId) &&
+      String(a.warehouseId) === String(warehouseId)
+    )) {
+      assignments.push({ storeId, warehouseId });
+    }
+  }
+
+  if (!assignments.length) {
+    return alert('Asigna al menos una tienda y un almacén.');
+  }
+
+  u.name = name;
+  u.user = username;
+  u.role = role;
+  u.active = active;
+  u.storeAssignments = assignments;
+  u.storeIds = [...new Set(assignments.map(a => a.storeId))];
+  u.warehouseIds = [...new Set(assignments.map(a => a.warehouseId))];
+
+  if (password) u.password = password;
+
+  if (String(u.id) === String(session.id)) session = u;
+
+  audit('MODIFICAR', 'USUARIO', u.user);
   closeModal();
   save();
+  render();
+}
+
+function deleteUser(id) {
+  const u = db.users.find(x => String(x.id) === String(id));
+  if (!u) return alert('No se encontró el usuario.');
+
+  if (String(u.id) === String(session.id)) {
+    return alert('No puedes eliminar tu propio usuario.');
+  }
+
+  if (!confirm(`¿Eliminar definitivamente al usuario "${u.user}"?`)) return;
+
+  audit('ELIMINAR', 'USUARIO', u.user);
+  db.users = db.users.filter(x => String(x.id) !== String(id));
+
+  save();
+  closeModal();
   render();
 }
 
