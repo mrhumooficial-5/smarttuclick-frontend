@@ -180,6 +180,7 @@ const STC_TAB_ID=Date.now().toString(36)+'_'+Math.random().toString(36).slice(2)
 let stcChannel=null;
 let stcToken=localStorage.getItem('smarttuclick_api_token')||'';
 let stcReady=false;
+let adminStoreSelected = false;
 let stcBusy=false;
 try{stcChannel=new BroadcastChannel('smarttuclick-live-v1')}catch{}
 
@@ -329,7 +330,11 @@ function can(v){
   return true;
 }
 
+
+
 function go(v){
+ 
+
   if(!can(v)){
     if(session.role==='Cajero'&&!currentCash().open&&cashLocked.includes(v)){
       return alert('Caja cerrada. Debes aperturar la caja de esta tienda antes de ingresar a este módulo.');
@@ -338,11 +343,24 @@ function go(v){
     return alert('Tu rol no tiene permiso para este módulo.');
   }
 
-  view=v;
+  view = v;
   render();
 }
 
-function navGroups(){const groups={sales:[],management:[],reports:[],admin:[]};nav.forEach(x=>{if(x[0]!=='dashboard'&&can(x[0]))groups[x[2]].push(x)});return `<div class="nav-home"><button class="nav-item ${view==='dashboard'?'active':''}" onclick="go('dashboard')"><span>⌂</span> Inicio</button></div>${[['sales','Ventas'],['management','Gestión'],['reports','Reportes'],['admin','Administración']].map(([g,t])=>groups[g].length?`<div class="nav-group"><div class="nav-label">${t}</div>${groups[g].map(([k,txt])=>`<button class="nav-item ${view===k?'active':''}" onclick="go('${k}')"><span>${({pos:'▣',cash:'$',quotes:'▤',clients:'♙',products:'▦',inventory:'↕',purchases:'▧',transfers:'⇄',sales:'▤',reports:'◔',users:'♟',settings:'⚙'}[k]||'•')}</span>${txt}</button>`).join('')}</div>`:'').join('')}`}
+function navGroups(){
+  const groups={sales:[],management:[],reports:[],admin:[]};
+
+  nav.forEach(x=>{
+    if(x[0]!=='dashboard'&&can(x[0])){
+  
+
+      groups[x[2]].push(x);
+    }
+  });
+
+  return `<div class="nav-home"><button class="nav-item ${view==='dashboard'?'active':''}" onclick="go('dashboard')"><span>⌂</span> Inicio</button></div>${[['sales','Ventas'],['management','Gestión'],['reports','Reportes'],['admin','Administración']].map(([g,t])=>groups[g].length?`<div class="nav-group"><div class="nav-label">${t}</div>${groups[g].map(([k,txt])=>`<button class="nav-item ${view===k?'active':''}" onclick="go('${k}')"><span>${({pos:'▣',cash:'$',quotes:'▤',clients:'♙',products:'▦',inventory:'↕',purchases:'▧',transfers:'⇄',sales:'▤',reports:'◔',users:'♟',settings:'⚙'}[k]||'•')}</span>${txt}</button>`).join('')}</div>`:'').join('')}`;
+}
+
 function closeMobileMenu(){document.body.classList.remove('menu-open')}
 function render(){const root=document.getElementById('app');if(!session){root.innerHTML=loginPage();return}const title=nav.find(x=>x[0]===view)?.[1]||'SmartTuClick';root.innerHTML=`<div class="shell"><div class="mobile-backdrop" onclick="closeMobileMenu()"></div><aside class="side"><div class="brand"><span class="brandmark">S</span><span>SmartTuClick</span><button class="mobile-close" onclick="closeMobileMenu()">×</button></div><div class="userbox"><b>${esc(session.name)}</b><span>${esc(session.role)} · ${esc(session.user)}</span></div><div class="nav">${navGroups()}</div><div class="sidefoot">v1.1 · LIVE<br><span>Backend: Render + Neon</span></div></aside><main class="main"><header class="appbar"><button class="menu-toggle" onclick="document.body.classList.add('menu-open')">☰</button><div class="appbar-title"><strong>${esc(title)}</strong><span>${esc(currentStore().name)}</span></div><div class="appbar-actions"><select class="input storeSelect" onchange="switchStore(this.value)">${db.stores.filter(s=>s.active).map(s=>`<option value="${s.id}" ${s.id===currentStore().id?'selected':''}>${esc(s.name)}</option>`).join('')}</select><span class="pill ${currentCash().open?'open':'closed'}">${currentCash().open?'● Caja abierta':'● Caja cerrada'}</span><span class="pill live-pill">● EN VIVO</span><button class="btn alt logout-btn" onclick="logout()">Salir</button></div></header><div class="page-head"><div><h1>${esc(title)}</h1><div class="muted">${esc(db.company.name)}</div></div></div>${pages[view]?.()||pages.dashboard()}</main></div>`;if(view==='pos')setTimeout(toggleCashReceived,0)}
 function loginPage(){return `<div class="login"><div class="loginbox card"><div class="brand big">⚡ SmartTuClick</div><p class="muted">Punto de venta y gestión empresarial · modo demo local</p><label>Usuario<select id="loginUser" class="input">${db.users.filter(u=>u.active).map(u=>`<option value="${u.id}">${esc(u.user)} · ${esc(u.role)}</option>`).join('')}</select></label><label>Contraseña<input id="loginPass" class="input" type="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')login()"></label><button class="btn good full" onclick="login()">Ingresar</button><div class="notice">🟡 Autenticación local de demostración. No es seguridad de producción.</div></div></div>`}
@@ -351,8 +369,13 @@ async function login(){
   const pass=document.getElementById('loginPass')?.value||'';
   if(!u||!u.active||u.password!==pass)return alert('Usuario o contraseña incorrectos.');
   session=u;
-  localStorage.setItem(SESSION_KEY,String(u.id));
-  view='dashboard';
+
+if(u.role==='Administrador'){
+  adminStoreSelected=false;
+}
+
+localStorage.setItem(SESSION_KEY,String(u.id));
+view='dashboard';
   render();
   await stcConnect(u,pass);
   stcStartEvents();
@@ -407,27 +430,38 @@ function allCashClosures(){
     .sort((a,b)=>new Date(b.date)-new Date(a.date));
 }
 
-function switchStore(id){
-  const nextStoreId=Number(id);
 
-  if(!db.stores.some(s=>s.id===nextStoreId&&s.active)){
+function switchStore(id){
+  const nextStoreId = Number(id);
+
+  if(!db.stores.some(s => s.id === nextStoreId && s.active)){
     return alert('La tienda seleccionada no existe o está inactiva.');
   }
 
-  if(currentCash().open){
+  // Los cajeros no pueden cambiar de sucursal con su caja abierta.
+  // El administrador sí puede cambiar para supervisar cada sucursal.
+  if(session?.role !== 'Administrador' && currentCash().open){
     return alert('Cierra la caja de la tienda actual antes de cambiar de tienda.');
   }
 
-  db.activeStoreId=nextStoreId;
+  db.activeStoreId = nextStoreId;
+
+  if(session?.role === 'Administrador'){
+    adminStoreSelected = true;
+  }
+
   save();
   render();
 }
+
 
 function dashboard(){const cash=currentCash();let sales=db.sales.filter(x=>
   x.date.slice(0,10)===today()&&
   x.status!=='ANULADA'&&
   x.storeId===currentStore().id
-),total=sales.reduce((a,x)=>a+x.total,0),stock=db.products.filter(p=>p.active&&stockOf(p)<=p.min),pending=db.transfers.filter(t=>t.status==='PENDIENTE').length;let quick=[];if(can('pos'))quick.push(`<button class="quick-card primary" onclick="go('pos')"><span>▣</span><b>Nueva venta</b><small>Abrir punto de venta</small></button>`);if(can('cash'))quick.push(`<button class="quick-card ${cash.open?'good':'warn'}" onclick="go('cash')"><span>$</span><b>${cash.open?'Caja abierta':'Aperturar caja'}</b><small>${cash.open?money(cash.expected):'Registrar fondo inicial'}</small></button>`);if(can('products'))quick.push(`<button class="quick-card" onclick="go('products')"><span>▦</span><b>Productos</b><small>Catálogo e inventario</small></button>`);if(can('sales'))quick.push(`<button class="quick-card" onclick="go('sales')"><span>▤</span><b>Ventas</b><small>Consultar comprobantes</small></button>`);
+),total=sales.reduce((a,x)=>a+x.total,0),stock=db.products.filter(p=>p.active&&stockOf(p)<=p.min),pending=db.transfers.filter(t=>t.status==='PENDIENTE').length;let quick=[];if(can('pos'))quick.push(`<button class="quick-card primary" onclick="go('pos')"><span>▣</span><b>Nueva venta</b><small>Abrir punto de venta</small></button>`);
+if(session.role!=='Administrador'&&can('cash'))quick.push(`<button class="quick-card ${cash.open?'good':'warn'}" onclick="go('cash')"><span>$</span><b>${cash.open?'Caja abierta':'Aperturar caja'}</b><small>${cash.open?money(cash.expected):'Registrar fondo inicial'}</small></button>`);
+
 const branchPanel = session.role === 'Administrador'
   ? `<div class="card branch-hub">
       <div class="section-title">
@@ -469,10 +503,14 @@ const branchPanel = session.role === 'Administrador'
       @media(max-width:600px){.branch-grid{grid-template-columns:1fr}.branch-card{padding:12px}}
     </style>`
   : '';
-return `<div class="welcome"><div><div class="eyebrow">${cash.open?'● OPERACIÓN ACTIVA':'● CAJA CERRADA'}</div><h2>Hola, ${esc(session.name.split(' ')[0])}</h2><p>${cash.open?'Todo listo para trabajar.':'Puedes revisar el sistema. Para vender, primero apertura la caja.'}</p></div>${cash.open?`<button class="btn good" onclick="go('pos')">Ir a vender</button>`:can('cash')?`<button class="btn warn" onclick="go('cash')">Aperturar caja</button>`:''}</div>${branchPanel}<div class="quick-grid">${quick.join('')}</div><div class="dashboard-grid"><div class="card"><div class="section-title"><b>Resumen de hoy</b><span class="tag">${sales.length} ventas</span></div><div class="summary-list"><div><span>Ventas</span><strong>${money(total)}</strong></div><div><span>Productos</span><strong>${db.products.length}</strong></div><div><span>Stock bajo</span><strong class="${stock.length?'danger':'success'}">${stock.length}</strong></div><div><span>Transferencias pendientes</span><strong>${pending}</strong></div></div></div><div class="card"><div class="section-title"><b>Últimas ventas</b>${can('sales')?`<button class="btn alt" onclick="go('sales')">Ver todas</button>`:''}</div>${db.sales.slice(-5).reverse().map(s=>`<div class="listrow"><div><b>${esc(s.doc)}</b><div class="muted">${esc(s.client)}</div></div><strong>${money(s.total)}</strong></div>`).join('')||'<div class="empty">Aún no hay ventas.</div>'}</div></div>`}
+return `<div class="welcome"><div><div class="eyebrow">${cash.open?'● OPERACIÓN ACTIVA':'● CAJA CERRADA'}</div><h2>Hola, ${esc(session.name.split(' ')[0])}</h2><p>${cash.open?'Todo listo para trabajar.':'Puedes revisar el sistema. Para vender, primero apertura la caja.'}</p></div>${cash.open?`<button class="btn good" onclick="go('pos')">Ir a vender</button>`:session.role!=='Administrador'&&can('cash')?`<button class="btn warn" onclick="go('cash')">Aperturar caja</button>`:''}</div>${branchPanel}<div class="quick-grid">${quick.join('')}</div><div class="dashboard-grid"><div class="card"><div class="section-title"><b>Resumen de hoy</b><span class="tag">${sales.length} ventas</span></div><div class="summary-list"><div><span>Ventas</span><strong>${money(total)}</strong></div><div><span>Productos</span><strong>${db.products.length}</strong></div><div><span>Stock bajo</span><strong class="${stock.length?'danger':'success'}">${stock.length}</strong></div><div><span>Transferencias pendientes</span><strong>${pending}</strong></div></div></div><div class="card"><div class="section-title"><b>Últimas ventas</b>${can('sales')?`<button class="btn alt" onclick="go('sales')">Ver todas</button>`:''}</div>${db.sales.slice(-5).reverse().map(s=>`<div class="listrow"><div><b>${esc(s.doc)}</b><div class="muted">${esc(s.client)}</div></div><strong>${money(s.total)}</strong></div>`).join('')||'<div class="empty">Aún no hay ventas.</div>'}</div></div>`}
 const pages={dashboard:dashboard,
 pos:()=>{let subtotal=cartTotal();return `<div class="pos"><div><div class="toolbar"><input id="posSearch" class="input grow" autofocus placeholder="🔎 Nombre, SKU o código de barras · F2 lector" onkeydown="if(event.key==='Enter')scan(this.value)" oninput="posFilter(this.value)"><button class="btn alt" onclick="clearCart()">Vaciar</button><button class="btn alt" onclick="holdSale()">Guardar</button><button class="btn alt" onclick="heldSales()">En espera (${db.held.length})</button></div><div id="posProducts" class="products">${posProducts()}</div></div><div class="card cart"><div class="section-title"><b>Venta actual</b><span class="tag">${db.cart.length} líneas</span></div><div id="cartList">${cartHtml()}</div><hr><div class="row"><span>Subtotal</span><b>${money(subtotal)}</b></div><div class="clientLookupBox"><div class="clientLookupHead"><span>Cliente</span><button class="btn alt smallBtn" type="button" onclick="clientFormForSale()">+ Añadir cliente</button></div><div class="clientLookup"><select id="saleDocSearchType" class="input docTypeMini" onchange="lookupSaleClient()"><option>DNI</option><option>RUC</option><option>CE</option></select><input id="saleClientDoc" class="input" inputmode="numeric" placeholder="DNI o RUC del cliente" oninput="lookupSaleClient()"><button class="btn alt" type="button" onclick="lookupSaleClient(true)">Buscar</button></div><div id="saleClientResult" class="clientResult">Cliente General · 00000000</div><input type="hidden" id="saleClient" value="${db.clients[0]?.id||''}"></div><div class="row"><span>Documento</span><select id="saleDocType" class="input" onchange="syncSaleDocClient()"><option value="NOTA_VENTA">Nota de venta</option><option value="BOLETA">Boleta (prototipo)</option><option value="FACTURA">Factura (prototipo)</option></select></div><div class="row"><span>Pago</span><div style="display:flex;gap:8px;width:100%"><select id="salePayment" class="input" onchange="toggleCashReceived()"><option>Efectivo</option><option>Yape</option><option>Plin</option><option>Izipay</option><option>Tarjeta</option><option>Transferencia</option></select><button class="btn alt" type="button" onclick="openMultiPayment()">Generar pago</button></div></div><div id="cashReceivedRow" class="row"><span>Recibido</span><input id="cashReceived" class="input small" type="number" min="0" step="0.01" placeholder="S/"></div><div class="totalbar"><span>Total</span><span class="total">${money(subtotal)} </span></div><button class="btn good full" onclick="finishSale()">Cobrar y emitir venta</button></div></div>`},
-cash:()=>{const cash=currentCash();return `<div class="grid"><div class="card"><b>Turno de caja</b><div class="kpi">${cash.open?'ABIERTA':'CERRADA'}</div>${cash.open?`<p class="muted">Abierta ${new Date(cash.openedAt).toLocaleString()} · ${esc(session.name)}</p><p>Esperado efectivo: <b>${money(cash.expected)}</b></p><button class="btn warn" onclick="closeCash()">Cerrar caja</button>`:`<p class="muted">Selecciona caja y monto inicial.</p><select id="cashRegister" class="input">${db.registers.filter(r=>r.active&&r.storeId===currentStore().id).map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select><input id="opening" class="input" type="number" placeholder="Monto inicial"><button class="btn good" onclick="openCash()">Abrir caja</button>`}</div><div class="card"><b>Movimientos del turno</b><table class="table"><tr><th>Hora</th><th>Tipo</th><th>Detalle</th><th>Monto</th></tr>${(cash.movements||[]).slice(-30).reverse().map(x=>`<tr><td>${new Date(x.date).toLocaleTimeString()}</td><td>${x.type}</td><td>${esc(x.detail)}</td><td>${money(x.amount)}</td></tr>`).join('')||empty(4)}</table></div></div>${session.role!=='Cajero'?`<div class="section card"><div class="section-title"><b>Administración · Ventas por día y cierre de caja</b><span class="tag">${allCashClosures().length} cierres</span></div><p class="muted">El importe de ventas no incluye el fondo inicial. Haz clic en <b>Ver ventas</b> para revisar el total y los medios de pago.</p><table class="table"><tr><th>Día</th><th>Cierre</th><th>Caja</th><th>Usuario</th><th>Ventas</th><th>Diferencia de caja</th><th></th></tr>${allCashClosures().slice(0,30).map(x=>`<tr><td>${new Date(x.date).toLocaleDateString()}</td><td>${new Date(x.date).toLocaleTimeString()}</td><td>${esc(x.register)}</td><td>${esc(x.user)}</td><td><button class="btn good smallBtn" onclick="viewCashClose(${x.id})">Ver ventas · ${money(Number(x.salesTotal||0))}</button></td><td class="${Number(x.difference||0)?'danger':'success'}">${money(Number(x.difference||0))}</td><td><button class="btn alt smallBtn" onclick="viewCashClose(${x.id})">Ver detalle</button></td></tr>`).join('')||empty(7)}</table></div>`:''}`},
+cash:()=>{const cash=currentCash();return `<div class="grid"><div class="card"><b>Turno de caja</b><div class="kpi">${cash.open?'ABIERTA':'CERRADA'}</div>${cash.open?`<p class="muted">Abierta ${new Date(cash.openedAt).toLocaleString()} · ${esc(session.name)}</p><p>Esperado efectivo: <b>${money(cash.expected)}</b></p><button class="btn warn" onclick="closeCash()">Cerrar caja</button>`:`
+<p class="muted">Ingresa el monto inicial para aperturar la caja.</p>
+<input id="opening" class="input" type="number" min="0" step="0.01" placeholder="Monto inicial" required>
+<button class="btn good" onclick="openCash()">Aperturar caja</button>
+`}</div><div class="card"><b>Movimientos del turno</b><table class="table"><tr><th>Hora</th><th>Tipo</th><th>Detalle</th><th>Monto</th></tr>${(cash.movements||[]).slice(-30).reverse().map(x=>`<tr><td>${new Date(x.date).toLocaleTimeString()}</td><td>${x.type}</td><td>${esc(x.detail)}</td><td>${money(x.amount)}</td></tr>`).join('')||empty(4)}</table></div></div>${session.role!=='Cajero'?`<div class="section card"><div class="section-title"><b>Administración · Ventas por día y cierre de caja</b><span class="tag">${allCashClosures().length} cierres</span></div><p class="muted">El importe de ventas no incluye el fondo inicial. Haz clic en <b>Ver ventas</b> para revisar el total y los medios de pago.</p><table class="table"><tr><th>Día</th><th>Cierre</th><th>Caja</th><th>Usuario</th><th>Ventas</th><th>Diferencia de caja</th><th></th></tr>${allCashClosures().slice(0,30).map(x=>`<tr><td>${new Date(x.date).toLocaleDateString()}</td><td>${new Date(x.date).toLocaleTimeString()}</td><td>${esc(x.register)}</td><td>${esc(x.user)}</td><td><button class="btn good smallBtn" onclick="viewCashClose(${x.id})">Ver ventas · ${money(Number(x.salesTotal||0))}</button></td><td class="${Number(x.difference||0)?'danger':'success'}">${money(Number(x.difference||0))}</td><td><button class="btn alt smallBtn" onclick="viewCashClose(${x.id})">Ver detalle</button></td></tr>`).join('')||empty(7)}</table></div>`:''}`},
 products:()=>`<div class="toolbar"><button class="btn good" onclick="productForm()">+ Nuevo producto</button><button class="btn alt" onclick="downloadProductTemplate()">📄 Descargar plantilla</button><button class="btn alt" onclick="importProductsExcel()">📥 Importar Excel</button><button class="btn alt" onclick="exportProductsExcel()">📤 Exportar Excel</button><button class="btn quickIn" onclick="quickStockMove()">↓ Ingreso rápido</button><button class="btn quickOut" onclick="quickStockMove()">↑ Salida rápida</button><input id="productSearch" class="input grow" placeholder="Buscar producto/SKU/código" oninput="productSearch(this.value)"><select id="catFilter" class="input" onchange="productSearch(document.getElementById('productSearch')?.value||'')"><option value="">Todas las categorías</option>${[...new Set(db.products.map(p=>p.category))].map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div class="card"><table class="table"><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Costo</th><th>Precio</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr><tbody id="productRows">${productRows()}</tbody></table></div>`,
 inventory:()=>`<div class="grid"><div class="card"><span>Inventario valorizado</span><div class="kpi">${money(db.products.reduce((a,p)=>a+stockOf(p)*p.cost,0))}</div></div><div class="card"><span>Movimientos</span><div class="kpi">${db.movements.filter(m=>m.storeId===currentStore().id).length}</div></div><div class="card"><span>Stock crítico</span><div class="kpi danger">${db.products.filter(p=>stockOf(p)<=p.min).length}</div></div><div class="card"><span>Unidades</span><div class="kpi">${db.products.reduce((a,p)=>a+stockOf(p),0)}</div></div></div><div class="toolbar section"><input class="input grow" id="kardexSearch" placeholder="Filtrar Kardex" oninput="kardexFilter(this.value)"><button class="btn alt" onclick="adjustStockForm()">Ajuste de inventario</button></div><div class="card"><table class="table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Antes</th><th>Cant.</th><th>Después</th><th>Motivo</th><th>Ref.</th></tr></thead><tbody id="kardexRows">${kardexRows()}</tbody></table></div>`,
 purchases:()=>`<div class="toolbar"><button class="btn good" onclick="purchaseForm()">+ Registrar compra</button><button class="btn alt" onclick="supplierForm()">+ Proveedor</button></div><div class="card"><table class="table"><tr><th>Fecha</th><th>Proveedor</th><th>Documento</th><th>Producto</th><th>Cant.</th><th>Total</th><th>Estado</th></tr>${db.purchases.slice().reverse().map(p=>`<tr><td>${new Date(p.date).toLocaleDateString()}</td><td>${esc(p.supplier)}</td><td>${esc(p.doc)}</td><td>${esc(p.product)}</td><td>${p.qty}</td><td>${money(p.total)}</td><td>${p.status}</td></tr>`).join('')||empty(7)}</table></div>`,
@@ -1113,60 +1151,84 @@ function restoreHeld(id){if(db.cart.length)return alert('Vacía la venta actual 
 function toggleCashReceived(){let p=document.getElementById('salePayment')?.value,row=document.getElementById('cashReceivedRow');if(row)row.style.display=p==='Efectivo'?'flex':'none'}
 function holdSale(){if(!db.cart.length)return alert('Carrito vacío');db.held.push({id:uid(),date:new Date().toISOString(),items:clone(db.cart)});db.cart=[];save();render();alert('Venta guardada en espera.')}
 
+
 function openCash(){
-  const cash=currentCash();
-  if(cash.open)return;
+  if (session?.role === 'Administrador' && !adminStoreSelected) {
+    return alert('Selecciona primero la sucursal que deseas administrar.');
+  }
 
-  const openingInput=document.getElementById('opening');
-  const registerInput=document.getElementById('cashRegister');
+  const cash = currentCash();
+  if (cash.open) {
+    return alert('La caja de esta sucursal ya está abierta.');
+  }
 
-  const n=Number(openingInput.value);
-  const registerId=Number(registerInput.value);
+  const openingInput = document.getElementById('opening');
 
-  if(openingInput.value.trim()===''){
+  if (!openingInput || openingInput.value.trim() === '') {
     return alert('Ingresa el monto inicial de apertura.');
   }
 
-  if(n<0){
-    return alert('El monto inicial no puede ser negativo.');
+  const n = Number(openingInput.value);
+
+  if (!Number.isFinite(n) || n < 0) {
+    return alert('Ingresa un monto válido, igual o mayor que 0.');
   }
 
-  
-  const register = db.registers.find(
-    r => String(r.id) === String(registerId)
-  );
-
-  if (!register || String(register.storeId) !== String(currentStore().id)) {
-    return alert('La caja seleccionada no pertenece a la tienda activa.');
-  }
-
-  const warehouse = warehouseForStore(currentStore().id);
+  const store = currentStore();
+  const warehouse = warehouseForStore(store.id);
 
   if (!warehouse) {
-    return alert('Esta tienda no tiene un almacén configurado.');
+    return alert('Esta sucursal no tiene un almacén configurado.');
   }
 
-  register.warehouseId = warehouse.id;
+  // Crear una caja interna automáticamente si la sucursal no tiene una.
+  let register = db.registers.find(
+    r => r.active && String(r.storeId) === String(store.id)
+  );
 
+  if (!register) {
+    const nextId = Math.max(0, ...db.registers.map(r => Number(r.id) || 0)) + 1;
 
-  cash.open=true;
-  cash.opening=n;
-  cash.expected=n;
-  cash.openedAt=new Date().toISOString();
-  cash.userId=session.id;
-  cash.registerId=registerId;
-  cash.movements=[{
-    date:new Date().toISOString(),
-    type:'APERTURA',
-    detail:'Fondo inicial',
-    amount:n
+    register = {
+      id: nextId,
+      storeId: store.id,
+      name: `Caja ${store.id}`,
+      code: `C${String(nextId).padStart(3, '0')}`,
+      active: true,
+      warehouseId: warehouse.id
+    };
+
+    db.registers.push(register);
+  } else {
+    register.warehouseId = warehouse.id;
+  }
+
+  cash.open = true;
+  cash.opening = n;
+  cash.expected = n;
+  cash.openedAt = new Date().toISOString();
+  cash.userId = session.id;
+  cash.registerId = register.id;
+  cash.closed = false;
+  cash.paymentTotals = {
+    Efectivo: 0,
+    Yape: 0,
+    Plin: 0,
+    Izipay: 0,
+    Tarjeta: 0,
+    Transferencia: 0
+  };
+  cash.movements = [{
+    date: new Date().toISOString(),
+    type: 'APERTURA',
+    detail: 'Monto inicial de caja',
+    amount: n
   }];
 
-  audit('APERTURA_CAJA','CAJA',String(registerId));
+  audit('APERTURA_CAJA', 'CAJA', String(register.id));
   save();
   render();
 }
-
 
 function cashMovement(){
   const cash=currentCash();
@@ -1351,7 +1413,9 @@ function confirmCashClose(){
  );
 
  const salesTotal=closeSales.reduce((a,s)=>a+Number(s.total||0),0);
-
+       if (!Array.isArray(cash.closed)) {
+  cash.closed = [];
+}
  cash.closed.push({
    id:uid(),
    date:closedAt,
@@ -2139,11 +2203,39 @@ async function exportProductsExcel(){
     );
   }
 }
+
 function productRows(list=db.products){
-  const sid=currentStore().id;
+  const isAdmin = session?.role === 'Administrador';
 
   return list.map(p=>{
-    const stock=stockOf(p,sid);
+    if (isAdmin) {
+      const stocks = db.stores.map(store => ({
+        name: store.name,
+        stock: stockOf(p, store.id)
+      }));
+
+      const total = stocks.reduce((sum, item) => sum + item.stock, 0);
+
+      return `<tr>
+        <td>${esc(p.sku)}</td>
+        <td><b>${esc(p.name)}</b><div class="muted">${esc(p.barcode)}</div></td>
+        <td>${esc(p.category)}</td>
+        <td>${money(p.cost)}</td>
+        <td>${money(p.price)}</td>
+        <td>
+          <b>Total: ${total} ${esc(p.unit)}</b>
+          <div class="muted">${stocks.map(item =>
+            `${esc(item.name)}: ${item.stock} ${esc(p.unit)}`
+          ).join('<br>')}</div>
+        </td>
+        <td>${p.active?'Activo':'Inactivo'}</td>
+        <td class="actions">
+          <button class="btn alt" onclick="editProduct(${p.id})">Editar</button>
+        </td>
+      </tr>`;
+    }
+
+    const stock = stockOf(p, currentStore().id);
 
     return `<tr>
       <td>${esc(p.sku)}</td>
@@ -2160,8 +2252,9 @@ function productRows(list=db.products){
         <button class="btn alt" onclick="editProduct(${p.id})">Editar</button>
       </td>
     </tr>`;
-  }).join('')||empty(8);
-}function adjust(id){let p=db.products.find(x=>x.id===id),n=Number(prompt(`Nuevo stock para ${p.name}`,stockOf(p)));if(!Number.isFinite(n)||n<0)return;let before=stockOf(p),d=n-before;setStock(p,n);db.movements.push({id:db.seq.move++,date:new Date().toISOString(),productId:p.id,product:p.name,type:d>=0?'ENTRADA':'SALIDA',before,qty:Math.abs(d),after:n,reason:'AJUSTE',reference:'AJ-'+db.seq.move,user:session.name,storeId:currentStore().id});save();render()}
+  }).join('') || empty(8);
+}
+function adjust(id){let p=db.products.find(x=>x.id===id),n=Number(prompt(`Nuevo stock para ${p.name}`,stockOf(p)));if(!Number.isFinite(n)||n<0)return;let before=stockOf(p),d=n-before;setStock(p,n);db.movements.push({id:db.seq.move++,date:new Date().toISOString(),productId:p.id,product:p.name,type:d>=0?'ENTRADA':'SALIDA',before,qty:Math.abs(d),after:n,reason:'AJUSTE',reference:'AJ-'+db.seq.move,user:session.name,storeId:currentStore().id});save();render()}
 
 function quickStockMove(productId, type) {
   const p = productId
@@ -2633,12 +2726,28 @@ function saveUser() {
     ...document.querySelectorAll('#userAssignments .user-assignment')
   ];
 
-  if (!rows.length) {
-    return alert('Asigna al menos una tienda y un almacén.');
-  }
-
+ if (role !== 'Administrador' && !rows.length) {
+  return alert('Asigna al menos una tienda y un almacén.');
+}
   const assignments = [];
+if (role === 'Administrador') {
+  db.users.push({
+    id: uid(),
+    name,
+    user: username,
+    password: password || 'demo',
+    role,
+    active: true,
+    storeAssignments: [],
+    storeIds: [],
+    warehouseIds: []
+  });
 
+  closeModal();
+  save();
+  render();
+  return;
+}
   for (const row of rows) {
     const storeId = row.querySelector('.user-store').value;
     const warehouseId = row.querySelector('.user-warehouse').value;
@@ -2914,6 +3023,8 @@ function editUser(id) {
       </select>
     </div>
 
+    
+<div style="${u.role === 'Administrador' ? 'display:none' : ''}">
     <h4 style="margin-top:18px">Tiendas y almacenes asignados</h4>
 
     <div id="userAssignments">
@@ -2940,6 +3051,8 @@ function editUser(id) {
 
     <button type="button" class="btn alt" style="margin-top:12px"
       onclick="addUserAssignment()">+ Agregar otra tienda y almacén</button>
+</div>
+
   `, `
     <button class="btn good" onclick="updateUser('${u.id}')">Guardar cambios</button>
     <button class="btn danger" onclick="deleteUser('${u.id}')">Eliminar usuario</button>
@@ -2967,8 +3080,10 @@ function updateUser(id) {
     return alert('No puedes desactivar tu propio usuario.');
   }
 
-  const assignments = [];
+  
+const assignments = [];
 
+if (role !== 'Administrador') {
   for (const row of document.querySelectorAll('#userAssignments .user-assignment')) {
     const storeId = row.querySelector('.user-store').value;
     const warehouseId = row.querySelector('.user-warehouse').value;
@@ -2994,14 +3109,15 @@ function updateUser(id) {
   if (!assignments.length) {
     return alert('Asigna al menos una tienda y un almacén.');
   }
+}
 
   u.name = name;
   u.user = username;
   u.role = role;
   u.active = active;
-  u.storeAssignments = assignments;
-  u.storeIds = [...new Set(assignments.map(a => a.storeId))];
-  u.warehouseIds = [...new Set(assignments.map(a => a.warehouseId))];
+  u.storeAssignments = role === 'Administrador' ? [] : assignments;
+u.storeIds = role === 'Administrador' ? [] : [...new Set(assignments.map(a => a.storeId))];
+u.warehouseIds = role === 'Administrador' ? [] : [...new Set(assignments.map(a => a.warehouseId))];
 
   if (password) u.password = password;
 
