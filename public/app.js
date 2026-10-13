@@ -211,7 +211,7 @@ async function stcPull(){
   return data;
 }
 
-async function stcPush(){
+async function stcPull(){
   if(!stcToken||!stcReady)return;
   try{
     const data=await stcApi('/api/state',{method:'PUT',body:JSON.stringify({state:db,source:STC_TAB_ID})});
@@ -315,7 +315,7 @@ save();
 setTimeout(stcInitAfterLoad,80);
 
 function audit(action,entity,detail=''){db.audit.push({id:uid(),date:new Date().toISOString(),userId:session?.id||null,user:session?.name||'Sistema',action,entity,detail});if(db.audit.length>2000)db.audit=db.audit.slice(-2000)}function money(n){return 'S/ '+Number(n||0).toFixed(2)}function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-const nav=[['dashboard','Inicio','home'],['pos','Punto de venta','sales'],['cash','Caja','sales'],['products','Productos','management'],['inventory','Inventario / Kardex','management'],['purchases','Compras','management'],['transfers','Transferencias','management'],['quotes','Cotizaciones','sales'],['clients','Clientes y puntos','sales'],['users','Usuarios y roles','admin'],['sales','Ventas / comprobantes','sales'],['reports','Reportes','reports'],['settings','Configuración','admin']];
+const nav=[['dashboard','Inicio','home'],['pos','Punto de venta','sales'],['cash','Caja','sales'],['products','Productos','management'],['inventory','Inventario / Kardex','management'],['purchases','Compras','management'],['transfers','Transferencias','management'],['quotes','Cotizaciones','sales'],['clients','Clientes y puntos','sales'],['users','Usuarios y roles','admin'],['sales','Ventas / comprobantes','sales'],['cashSupervision','Supervisión de cajas','sales'],['reports','Reportes','reports'],['settings','Configuración','admin']];
 const cashLocked=['pos','products','inventory','quotes','sales'];
 
 function can(v){
@@ -362,7 +362,14 @@ function navGroups(){
 }
 
 function closeMobileMenu(){document.body.classList.remove('menu-open')}
-function render(){const root=document.getElementById('app');if(!session){root.innerHTML=loginPage();return}const title=nav.find(x=>x[0]===view)?.[1]||'SmartTuClick';root.innerHTML=`<div class="shell"><div class="mobile-backdrop" onclick="closeMobileMenu()"></div><aside class="side"><div class="brand"><span class="brandmark">S</span><span>SmartTuClick</span><button class="mobile-close" onclick="closeMobileMenu()">×</button></div><div class="userbox"><b>${esc(session.name)}</b><span>${esc(session.role)} · ${esc(session.user)}</span></div><div class="nav">${navGroups()}</div><div class="sidefoot">v1.1 · LIVE<br><span>Backend: Render + Neon</span></div></aside><main class="main"><header class="appbar"><button class="menu-toggle" onclick="document.body.classList.add('menu-open')">☰</button><div class="appbar-title"><strong>${esc(title)}</strong><span>${esc(currentStore().name)}</span></div><div class="appbar-actions"><select class="input storeSelect" onchange="switchStore(this.value)">${db.stores.filter(s=>s.active).map(s=>`<option value="${s.id}" ${s.id===currentStore().id?'selected':''}>${esc(s.name)}</option>`).join('')}</select><span class="pill ${currentCash().open?'open':'closed'}">${currentCash().open?'● Caja abierta':'● Caja cerrada'}</span><span class="pill live-pill">● EN VIVO</span><button class="btn alt logout-btn" onclick="logout()">Salir</button></div></header><div class="page-head"><div><h1>${esc(title)}</h1><div class="muted">${esc(db.company.name)}</div></div></div>${pages[view]?.()||pages.dashboard()}</main></div>`;if(view==='pos')setTimeout(toggleCashReceived,0)}
+function render(){const root=document.getElementById('app');if(!session){root.innerHTML=loginPage();return}const title=nav.find(x=>x[0]===view)?.[1]||'SmartTuClick';root.innerHTML=`<div class="shell"><div class="mobile-backdrop" onclick="closeMobileMenu()"></div><aside class="side"><div class="brand"><span class="brandmark">S</span><span>SmartTuClick</span><button class="mobile-close" onclick="closeMobileMenu()">×</button></div><div class="userbox"><b>${esc(session.name)}</b><span>${esc(session.role)} · ${esc(session.user)}</span></div><div class="nav">${navGroups()}</div><div class="sidefoot">v1.1 · LIVE<br><span>Backend: Render + Neon</span></div></aside><main class="main"><header class="appbar"><button class="menu-toggle" onclick="document.body.classList.add('menu-open')">☰</button><div class="appbar-title"><strong>${esc(title)}</strong><span>${esc(currentStore().name)}</span></div><div class="appbar-actions"><select class="input storeSelect" onchange="switchStore(this.value)">${db.stores.filter(s=>s.active).map(s=>`<option value="${s.id}" ${s.id===currentStore().id?'selected':''}>${esc(s.name)}</option>`).join('')}</select><span class="pill ${currentCash().open?'open':'closed'}">${currentCash().open?'● Caja abierta':'● Caja cerrada'}</span><span class="pill live-pill">● EN VIVO</span><button class="btn alt logout-btn" onclick="logout()">Salir</button></div></header><div class="page-head"><div><h1>${esc(title)}</h1><div class="muted">${esc(db.company.name)}</div></div></div>${pages[view]?.()||pages.dashboard()}</main></div>`;if(view==='sales'){
+  console.log('Rol actual:',session.role);
+  console.log('Cierres registrados:',allCashClosures().length);
+  console.log('Historial generado:',root.innerHTML.includes('Historial de cierres por sucursal'));
+}
+if(view==='pos')setTimeout(toggleCashReceived,0);
+if(view==='cashSupervision')superviseCash()}
+
 function loginPage(){return `<div class="login"><div class="loginbox card"><div class="brand big">⚡ SmartTuClick</div><p class="muted">Punto de venta y gestión empresarial · modo demo local</p><label>Usuario<select id="loginUser" class="input">${db.users.filter(u=>u.active).map(u=>`<option value="${u.id}">${esc(u.user)} · ${esc(u.role)}</option>`).join('')}</select></label><label>Contraseña<input id="loginPass" class="input" type="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')login()"></label><button class="btn good full" onclick="login()">Ingresar</button><div class="notice">🟡 Autenticación local de demostración. No es seguridad de producción.</div></div></div>`}
 async function login(){
   const u=db.users.find(x=>x.id===Number(document.getElementById('loginUser')?.value));
@@ -424,10 +431,26 @@ function currentCash(){
   return db.cashByStore[id];
 }
 
+
 function allCashClosures(){
-  return Object.values(db.cashByStore||{})
-    .flatMap(cash=>cash.closed||[])
-    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  return Object.values(db.cashByStore || {})
+    .flatMap(cash => cash.closed || [])
+    .map(c => {
+      const store = db.stores.find(
+        s => String(s.id) === String(c.storeId)
+      );
+
+      return {
+        ...c,
+        storeName: store?.name || `Sucursal ${c.storeId ?? 'sin identificar'}`,
+        opening: Number(c.opening || 0),
+        salesTotal: Number(c.salesTotal || 0),
+        expected: Number(c.expected || 0),
+        declared: Number(c.declared || 0),
+        difference: Number(c.difference || 0)
+      };
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
 
@@ -505,12 +528,30 @@ const branchPanel = session.role === 'Administrador'
   : '';
 return `<div class="welcome"><div><div class="eyebrow">${cash.open?'● OPERACIÓN ACTIVA':'● CAJA CERRADA'}</div><h2>Hola, ${esc(session.name.split(' ')[0])}</h2><p>${cash.open?'Todo listo para trabajar.':'Puedes revisar el sistema. Para vender, primero apertura la caja.'}</p></div>${cash.open?`<button class="btn good" onclick="go('pos')">Ir a vender</button>`:session.role!=='Administrador'&&can('cash')?`<button class="btn warn" onclick="go('cash')">Aperturar caja</button>`:''}</div>${branchPanel}<div class="quick-grid">${quick.join('')}</div><div class="dashboard-grid"><div class="card"><div class="section-title"><b>Resumen de hoy</b><span class="tag">${sales.length} ventas</span></div><div class="summary-list"><div><span>Ventas</span><strong>${money(total)}</strong></div><div><span>Productos</span><strong>${db.products.length}</strong></div><div><span>Stock bajo</span><strong class="${stock.length?'danger':'success'}">${stock.length}</strong></div><div><span>Transferencias pendientes</span><strong>${pending}</strong></div></div></div><div class="card"><div class="section-title"><b>Últimas ventas</b>${can('sales')?`<button class="btn alt" onclick="go('sales')">Ver todas</button>`:''}</div>${db.sales.slice(-5).reverse().map(s=>`<div class="listrow"><div><b>${esc(s.doc)}</b><div class="muted">${esc(s.client)}</div></div><strong>${money(s.total)}</strong></div>`).join('')||'<div class="empty">Aún no hay ventas.</div>'}</div></div>`}
 const pages={dashboard:dashboard,
-pos:()=>{let subtotal=cartTotal();return `<div class="pos"><div><div class="toolbar"><input id="posSearch" class="input grow" autofocus placeholder="🔎 Nombre, SKU o código de barras · F2 lector" onkeydown="if(event.key==='Enter')scan(this.value)" oninput="posFilter(this.value)"><button class="btn alt" onclick="clearCart()">Vaciar</button><button class="btn alt" onclick="holdSale()">Guardar</button><button class="btn alt" onclick="heldSales()">En espera (${db.held.length})</button></div><div id="posProducts" class="products">${posProducts()}</div></div><div class="card cart"><div class="section-title"><b>Venta actual</b><span class="tag">${db.cart.length} líneas</span></div><div id="cartList">${cartHtml()}</div><hr><div class="row"><span>Subtotal</span><b>${money(subtotal)}</b></div><div class="clientLookupBox"><div class="clientLookupHead"><span>Cliente</span><button class="btn alt smallBtn" type="button" onclick="clientFormForSale()">+ Añadir cliente</button></div><div class="clientLookup"><select id="saleDocSearchType" class="input docTypeMini" onchange="lookupSaleClient()"><option>DNI</option><option>RUC</option><option>CE</option></select><input id="saleClientDoc" class="input" inputmode="numeric" placeholder="DNI o RUC del cliente" oninput="lookupSaleClient()"><button class="btn alt" type="button" onclick="lookupSaleClient(true)">Buscar</button></div><div id="saleClientResult" class="clientResult">Cliente General · 00000000</div><input type="hidden" id="saleClient" value="${db.clients[0]?.id||''}"></div><div class="row"><span>Documento</span><select id="saleDocType" class="input" onchange="syncSaleDocClient()"><option value="NOTA_VENTA">Nota de venta</option><option value="BOLETA">Boleta (prototipo)</option><option value="FACTURA">Factura (prototipo)</option></select></div><div class="row"><span>Pago</span><div style="display:flex;gap:8px;width:100%"><select id="salePayment" class="input" onchange="toggleCashReceived()"><option>Efectivo</option><option>Yape</option><option>Plin</option><option>Izipay</option><option>Tarjeta</option><option>Transferencia</option></select><button class="btn alt" type="button" onclick="openMultiPayment()">Generar pago</button></div></div><div id="cashReceivedRow" class="row"><span>Recibido</span><input id="cashReceived" class="input small" type="number" min="0" step="0.01" placeholder="S/"></div><div class="totalbar"><span>Total</span><span class="total">${money(subtotal)} </span></div><button class="btn good full" onclick="finishSale()">Cobrar y emitir venta</button></div></div>`},
+pos:()=>{let subtotal=cartTotal();return `<div class="pos"><div><div class="toolbar"><input id="posSearch" class="input grow" autofocus placeholder="🔎 Nombre, SKU o código de barras · F2 lector" onkeydown="if(event.key==='Enter')scan(this.value)" oninput="posFilter(this.value)"><button class="btn alt" onclick="clearCart()">Vaciar</button><button class="btn alt" onclick="holdSale()">Guardar</button><button class="btn alt" onclick="heldSales()">En espera (${db.held.length})</button></div><div id="posProducts" class="products">${posProducts()}</div></div><div class="card cart"><div class="section-title"><b>Venta actual</b><span class="tag">${db.cart.length} líneas</span></div><div id="cartList">${cartHtml()}</div><hr><div class="row"><span>Subtotal</span><b>${money(subtotal)}</b></div><div class="clientLookupBox"><div class="clientLookupHead"><span>Cliente</span><button class="btn alt smallBtn" type="button" onclick="clientFormForSale()">+ Añadir cliente</button></div><div class="clientLookup"><select id="saleDocSearchType" class="input docTypeMini" onchange="lookupSaleClient()"><option>DNI</option><option>RUC</option><option>CE</option></select><input id="saleClientDoc" class="input" inputmode="numeric" placeholder="DNI o RUC del cliente" oninput="lookupSaleClient()"><button class="btn alt" type="button" onclick="lookupSaleClient(true)">Buscar</button></div><div id="saleClientResult" class="clientResult">Cliente General · 00000000</div><input type="hidden" id="saleClient" value="${db.clients[0]?.id||''}"></div><div class="row"><span>Documento</span><select id="saleDocType" class="input" onchange="syncSaleDocClient()"><option value="NOTA_VENTA">Nota de venta</option><option value="BOLETA">Boleta (prototipo)</option><option value="FACTURA">Factura (prototipo)</option></select></div><div class="row"><span>Pago</span><div style="display:flex;gap:8px;width:100%"><select id="salePayment" class="input" onchange="toggleCashReceived()"><option>Efectivo</option><option>Yape</option><option>Plin</option><option>Izipay</option><option>Tarjeta</option><option>Transferencia</option></select><button class="btn alt" type="button" onclick="openMultiPayment()">Generar pago</button></div></div><div id="cashReceivedRow" class="row"><span>Recibido</span><input id="cashReceived" class="input small" type="number" min="0" step="0.01" placeholder="S/"></div><div class="totalbar"><span>Total</span><span class="total">${money(subtotal)} </span></div>
+<button class="btn good full" onclick="finishSale()">Cobrar y emitir venta</button></div></div>`},
+
+cashSupervision:()=>`
+  <div class="section card">
+    <div class="section-title">
+      <b>Supervisión de cajas</b>
+      <span class="tag">${allCashClosures().length} cierres</span>
+    </div>
+    <p class="muted">
+      Revisa los cierres, importes y ventas de cada sucursal.
+    </p>
+    <div id="cashSupervisionContent">
+      <p class="muted">Cargando historial de cajas...</p>
+    </div>
+  </div>
+`,
+
+
 cash:()=>{const cash=currentCash();return `<div class="grid"><div class="card"><b>Turno de caja</b><div class="kpi">${cash.open?'ABIERTA':'CERRADA'}</div>${cash.open?`<p class="muted">Abierta ${new Date(cash.openedAt).toLocaleString()} · ${esc(session.name)}</p><p>Esperado efectivo: <b>${money(cash.expected)}</b></p><button class="btn warn" onclick="closeCash()">Cerrar caja</button>`:`
 <p class="muted">Ingresa el monto inicial para aperturar la caja.</p>
 <input id="opening" class="input" type="number" min="0" step="0.01" placeholder="Monto inicial" required>
 <button class="btn good" onclick="openCash()">Aperturar caja</button>
-`}</div><div class="card"><b>Movimientos del turno</b><table class="table"><tr><th>Hora</th><th>Tipo</th><th>Detalle</th><th>Monto</th></tr>${(cash.movements||[]).slice(-30).reverse().map(x=>`<tr><td>${new Date(x.date).toLocaleTimeString()}</td><td>${x.type}</td><td>${esc(x.detail)}</td><td>${money(x.amount)}</td></tr>`).join('')||empty(4)}</table></div></div>${session.role!=='Cajero'?`<div class="section card"><div class="section-title"><b>Administración · Ventas por día y cierre de caja</b><span class="tag">${allCashClosures().length} cierres</span></div><p class="muted">El importe de ventas no incluye el fondo inicial. Haz clic en <b>Ver ventas</b> para revisar el total y los medios de pago.</p><table class="table"><tr><th>Día</th><th>Cierre</th><th>Caja</th><th>Usuario</th><th>Ventas</th><th>Diferencia de caja</th><th></th></tr>${allCashClosures().slice(0,30).map(x=>`<tr><td>${new Date(x.date).toLocaleDateString()}</td><td>${new Date(x.date).toLocaleTimeString()}</td><td>${esc(x.register)}</td><td>${esc(x.user)}</td><td><button class="btn good smallBtn" onclick="viewCashClose(${x.id})">Ver ventas · ${money(Number(x.salesTotal||0))}</button></td><td class="${Number(x.difference||0)?'danger':'success'}">${money(Number(x.difference||0))}</td><td><button class="btn alt smallBtn" onclick="viewCashClose(${x.id})">Ver detalle</button></td></tr>`).join('')||empty(7)}</table></div>`:''}`},
+`}</div><div class="card"><b>Movimientos del turno</b><table class="table"><tr><th>Hora</th><th>Tipo</th><th>Detalle</th><th>Monto</th></tr>${(cash.movements||[]).slice(-30).reverse().map(x=>`<tr><td>${new Date(x.date).toLocaleTimeString()}</td><td>${x.type}</td><td>${esc(x.detail)}</td><td>${money(x.amount)}</td></tr>`).join('')||empty(4)}</table></div></div>`},
 products:()=>`<div class="toolbar"><button class="btn good" onclick="productForm()">+ Nuevo producto</button><button class="btn alt" onclick="downloadProductTemplate()">📄 Descargar plantilla</button><button class="btn alt" onclick="importProductsExcel()">📥 Importar Excel</button><button class="btn alt" onclick="exportProductsExcel()">📤 Exportar Excel</button><button class="btn quickIn" onclick="quickStockMove()">↓ Ingreso rápido</button><button class="btn quickOut" onclick="quickStockMove()">↑ Salida rápida</button><input id="productSearch" class="input grow" placeholder="Buscar producto/SKU/código" oninput="productSearch(this.value)"><select id="catFilter" class="input" onchange="productSearch(document.getElementById('productSearch')?.value||'')"><option value="">Todas las categorías</option>${[...new Set(db.products.map(p=>p.category))].map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div class="card"><table class="table"><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Costo</th><th>Precio</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr><tbody id="productRows">${productRows()}</tbody></table></div>`,
 inventory:()=>`<div class="grid"><div class="card"><span>Inventario valorizado</span><div class="kpi">${money(db.products.reduce((a,p)=>a+stockOf(p)*p.cost,0))}</div></div><div class="card"><span>Movimientos</span><div class="kpi">${db.movements.filter(m=>m.storeId===currentStore().id).length}</div></div><div class="card"><span>Stock crítico</span><div class="kpi danger">${db.products.filter(p=>stockOf(p)<=p.min).length}</div></div><div class="card"><span>Unidades</span><div class="kpi">${db.products.reduce((a,p)=>a+stockOf(p),0)}</div></div></div><div class="toolbar section"><input class="input grow" id="kardexSearch" placeholder="Filtrar Kardex" oninput="kardexFilter(this.value)"><button class="btn alt" onclick="adjustStockForm()">Ajuste de inventario</button></div><div class="card"><table class="table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Antes</th><th>Cant.</th><th>Después</th><th>Motivo</th><th>Ref.</th></tr></thead><tbody id="kardexRows">${kardexRows()}</tbody></table></div>`,
 purchases:()=>`<div class="toolbar"><button class="btn good" onclick="purchaseForm()">+ Registrar compra</button><button class="btn alt" onclick="supplierForm()">+ Proveedor</button></div><div class="card"><table class="table"><tr><th>Fecha</th><th>Proveedor</th><th>Documento</th><th>Producto</th><th>Cant.</th><th>Total</th><th>Estado</th></tr>${db.purchases.slice().reverse().map(p=>`<tr><td>${new Date(p.date).toLocaleDateString()}</td><td>${esc(p.supplier)}</td><td>${esc(p.doc)}</td><td>${esc(p.product)}</td><td>${p.qty}</td><td>${money(p.total)}</td><td>${p.status}</td></tr>`).join('')||empty(7)}</table></div>`,
@@ -518,7 +559,12 @@ transfers:()=>`<div class="toolbar"><button class="btn good" onclick="transferFo
 quotes:()=>`<div class="toolbar"><button class="btn good" onclick="quoteForm()">+ Nueva cotización</button></div><div class="card"><table class="table"><tr><th>Fecha</th><th>Cotización</th><th>Cliente</th><th>Total</th><th>Estado</th><th></th></tr>${quoteRows()}</table></div><div class="notice">🟡 Cotizaciones son documentos internos de demostración.\</div>`,
 clients:()=>`<div class="toolbar"><button class="btn good" onclick="clientForm()">+ Nuevo cliente</button><input class="input grow" placeholder="Buscar cliente/DNI/RUC" oninput="clientSearch(this.value)"></div><div class="card"><table class="table"><tbody id="clientRows"><tr><th>Documento</th><th>Cliente</th><th>Teléfono</th><th>Puntos</th><th></th></tr>${clientRows()}</tbody></table></div>`,
 users:()=>`<div class="toolbar"><button class="btn good" onclick="userForm()">+ Nuevo usuario</button></div><div class="card"><table class="table"><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Permisos</th><th>Acciones</th></tr>${db.users.map(u=>`<tr><td>${esc(u.user)}</td><td>${esc(u.name)}</td><td><span class="tag">${esc(u.role)}</span></td><td>${u.active?'Activo':'Inactivo'}</td><td>${(db.roles[u.role]||[]).includes('*')?'Todos':(db.roles[u.role]||[]).length+' módulos'}</td><td><button class="btn alt" onclick="editUser(${u.id})">Editar</button> <button class="btn ${u.active?'warn':'good'}" onclick="toggleUser(${u.id})">${u.active?'Desactivar':'Activar'}</button></td></tr>`).join('')}</table></div>`,
-sales:()=>`<div class="toolbar"><input class="input grow" id="salesSearch" placeholder="Buscar comprobante/cliente" oninput="salesFilter(this.value)"><button class="btn alt" onclick="exportCSV()">Exportar CSV</button></div><div class="card"><table class="table"><tbody id="salesRows"><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th><th></th></tr>${salesRows()}</tbody></table></div>`,
+
+
+
+sales:()=>`<div class="section card"><div class="section-title"><b>Supervisión de caja</b><span class="tag">${allCashClosures().length} cierres</span></div><p class="muted">Consulta los cierres anteriores y revisa cuánto dinero declaró cada sucursal.</p><button class="btn good" onclick="superviseCash()">Supervisar caja</button></div><div class="toolbar"><input class="input grow" id="salesSearch" placeholder="Buscar comprobante/cliente" oninput="salesFilter(this.value)"><button class="btn alt" onclick="exportCSV()">Exportar CSV</button></div><div class="card"><table class="table"><tbody id="salesRows"><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th><th></th></tr>${salesRows()}</tbody></table></div>`,
+
+
 reports:()=>{let total=db.sales.filter(s=>s.status!=='ANULADA').reduce((a,s)=>a+s.total,0),units=db.sales.reduce((a,s)=>a+s.items.reduce((b,i)=>b+i.qty,0),0),buy=db.purchases.reduce((a,p)=>a+p.total,0),margin=db.sales.filter(s=>s.status!=='ANULADA').reduce((a,s)=>a+s.items.reduce((b,i)=>b+(i.price-i.cost)*i.qty,0),0);return `<div class="grid"><div class="card">Ventas<div class="kpi">${money(total)}</div></div><div class="card">Unidades<div class="kpi">${units}</div></div><div class="card">Compras<div class="kpi">${money(buy)}</div></div><div class="card">Margen estimado<div class="kpi">${money(margin)}</div></div></div><div class="grid section"><div class="card span2"><b>Ventas por medio de pago</b>${['Efectivo','Yape','Plin','Izipay','Tarjeta','Transferencia'].map(m=>{let n=db.sales.filter(s=>s.payment===m&&s.status!=='ANULADA').reduce((a,s)=>a+s.total,0);return `<div class="listrow"><span>${m}</span><b>${money(n)}</b></div>`}).join('')}</div><div class="card"><b>Productos bajo mínimo</b>${db.products.filter(p=>stockOf(p)<=p.min).map(p=>`<div class="listrow"><span>${esc(p.name)}</span><b>${stockOf(p)}</b></div>`).join('')||'<div class="empty">Sin alertas.</div>'}</div></div><div class="section card"><b>Reportes preparados</b><p class="muted">Ventas por fecha/producto/cliente/usuario, compras, caja, Kardex, stock, utilidad y puntos. Exportación CSV funciona en esta demo; Excel/PDF quedan como adaptadores.</p></div>`},
 settings:()=>`<div class="grid"><div class="card"><h3>Empresa</h3><div class="formgrid"><input id="companyName" class="input" value="${esc(db.company.name)}" placeholder="Razón social"><input id="companyRuc" class="input" value="${esc(db.company.ruc)}" placeholder="RUC"><input id="igv" class="input" type="number" value="${db.company.igv*100}" placeholder="IGV %"><input id="storeName" class="input" value="${esc(currentStore().name)}" placeholder="Tienda"></div><button class="btn" onclick="saveSettings()">Guardar</button></div><div class="card print-config-card"><h3>Datos de Plantillas de Impresión</h3><p class="muted">Configura los mensajes y revisa el comprobante en tiempo real, como en SmartClic.</p><div class="print-config-layout"><div class="print-editor"><details class="print-accordion" open><summary>Mensaje de Cabecera</summary><div class="print-editor-body"><label>Texto de cabecera</label><textarea id="printHeader" class="input" placeholder="Ej. BIENVENIDO A VENDIX">${esc(db.settings.printHeader||'')}</textarea><label class="print-switch"><input type="checkbox" id="printHeaderOn" ${db.settings.printHeaderOn!==false?'checked':''}> ACTIVAR</label></div></details><details class="print-accordion"><summary>Mensaje Superior</summary><div class="print-editor-body"><label>Texto superior</label><textarea id="printTop" class="input" placeholder="Texto debajo de los datos del comprobante">${esc(db.settings.printTop||'')}</textarea><label class="print-switch"><input type="checkbox" id="printTopOn" ${db.settings.printTopOn!==false?'checked':''}> ACTIVAR</label></div></details><details class="print-accordion"><summary>Mensaje Inferior</summary><div class="print-editor-body"><label>Texto inferior</label><textarea id="printBottom" class="input" placeholder="Ej. Cuentas bancarias o información adicional">${esc(db.settings.printBottom||'')}</textarea><label class="print-switch"><input type="checkbox" id="printBottomOn" ${db.settings.printBottomOn!==false?'checked':''}> ACTIVAR</label></div></details><details class="print-accordion"><summary>Mensaje de Despedida</summary><div class="print-editor-body"><label>Texto de despedida</label><textarea id="printFarewell" class="input" placeholder="Ej. Gracias por su preferencia">${esc(db.settings.printFarewell||'Gracias por su preferencia.')}</textarea><label class="print-switch"><input type="checkbox" id="printFarewellOn" ${db.settings.printFarewellOn!==false?'checked':''}> ACTIVAR</label></div></details><div class="print-logo-settings"><b>Logotipo de la empresa</b><p class="muted">Sube el logo que aparecerá en el comprobante.</p><input id="printLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="input" onchange="loadPrintLogo(this)">${db.settings.printLogo?`<img src="${db.settings.printLogo}" alt="Logo actual" style="max-width:130px;max-height:70px;object-fit:contain;margin-top:8px"> <button class="btn alt" onclick="removePrintLogo()">Quitar logo</button>`:''}</div><button class="btn good" onclick="saveSettings()">Guardar configuración de impresión</button></div><div class="print-preview-wrap"><div class="print-preview-title">VISTA PREVIA DEL COMPROBANTE</div><div class="print-preview-paper"><div class="print-preview-brand">${db.settings.printLogo?`<img src="${db.settings.printLogo}" alt="Logo">`: '<div class="print-preview-logo-placeholder">LOGO</div>'}<div class="print-preview-doc"><small>RUC ${esc(db.company.ruc||'00000000000')}</small><b>COMPROBANTE</b><small>F001-000056</small></div></div><div class="print-preview-company"><b>${esc(db.company.name||'EMPRESA SIN REGISTRAR')}</b><br>${esc(currentStore().name||'DIRECCIÓN DE LA EMPRESA')}</div>${db.settings.printHeaderOn!==false&&db.settings.printHeader?`<div class="print-preview-message">${esc(db.settings.printHeader).replace(/\n/g,'<br>')}</div>`:''}${db.settings.printTopOn!==false&&db.settings.printTop?`<div class="print-preview-message">${esc(db.settings.printTop).replace(/\n/g,'<br>')}</div>`:''}<div class="print-preview-info"><div><b>CLIENTE:</b> CLIENTE VARIOS<br><b>DNI:</b> 00000000<br><b>DIRECCIÓN:</b></div><div><b>FECHA EMISIÓN:</b> 09/10/2026<br><b>MONEDA:</b> SOLES<br><b>FORMA DE PAGO:</b> CONTADO</div></div><table class="print-preview-table"><thead><tr><th>N°</th><th>CANT.</th><th>DESCRIPCIÓN</th><th>P. UNIT.</th><th>TOTAL</th></tr></thead><tbody><tr><td>1</td><td>2</td><td>Producto de ejemplo</td><td>10.00</td><td>20.00</td></tr><tr><td>2</td><td>1</td><td>Otro producto</td><td>15.00</td><td>15.00</td></tr></tbody></table><div class="print-preview-total"><b>TOTAL: S/ 35.00</b></div>${db.settings.printBottomOn!==false&&db.settings.printBottom?`<div class="print-preview-message">${esc(db.settings.printBottom).replace(/\n/g,'<br>')}</div>`:''}${db.settings.printFarewellOn!==false&&db.settings.printFarewell?`<div class="print-preview-message">${esc(db.settings.printFarewell).replace(/\n/g,'<br>')}</div>`:''}<div class="print-preview-qr">QR / CÓDIGO DEL COMPROBANTE</div></div><p class="muted">Vista referencial. Los datos reales se colocan al imprimir una venta.</p></div></div><style>.print-config-card{grid-column:1/-1}.print-config-layout{display:grid;grid-template-columns:minmax(300px,1fr) minmax(320px,.95fr);gap:22px;align-items:start}.print-accordion{border-bottom:1px solid #d8dce5}.print-accordion summary{padding:15px 10px;cursor:pointer;font-weight:700;color:#263653;list-style:none}.print-accordion summary:after{content:'⌄';float:right;color:#2563eb}.print-accordion[open] summary:after{content:'⌃'}.print-editor-body{padding:8px 10px 16px}.print-editor-body textarea{min-height:80px;width:100%;margin:8px 0}.print-switch{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#26874a}.print-logo-settings{padding:16px 10px;border-bottom:1px solid #d8dce5}.print-preview-wrap{background:#f3f5f9;border:1px solid #dce1e9;border-radius:8px;padding:14px;position:sticky;top:12px}.print-preview-title{font-size:12px;font-weight:800;letter-spacing:.05em;color:#526079;margin-bottom:10px}.print-preview-paper{background:#fff;border:1px solid #d7dbe2;border-radius:5px;padding:14px;box-shadow:0 2px 8px #18243a12;font-size:9px;color:#20242b;min-height:490px}.print-preview-brand{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}.print-preview-brand img{max-width:100px;max-height:55px;object-fit:contain}.print-preview-logo-placeholder{width:78px;height:40px;border:1px dashed #adb5c3;border-radius:4px;display:grid;place-items:center;color:#8992a2;font-size:10px}.print-preview-doc{border:2px solid #777;border-radius:9px;text-align:center;padding:6px;min-width:110px;display:flex;flex-direction:column;gap:3px}.print-preview-doc b{background:#e5e7eb;font-size:11px;padding:4px}.print-preview-company{font-size:10px;margin:8px 0 12px}.print-preview-message{border:1px solid #ed3345;border-radius:8px;padding:8px;text-align:center;font-weight:700;color:#d92335;margin:7px 0;overflow-wrap:anywhere}.print-preview-info{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}.print-preview-info>div{border:1px solid #777;border-radius:8px;padding:7px;line-height:1.5}.print-preview-table{width:100%;border-collapse:collapse;font-size:8px;margin:12px 0;table-layout:auto}.print-preview-table th,.print-preview-table td{border-bottom:1px solid #d7dbe2;padding:5px 2px;text-align:left}.print-preview-total{text-align:right;padding:10px 0;border-top:1px solid #777;font-size:12px}.print-preview-qr{margin:15px auto 0;border:1px dashed #aab1bf;width:120px;height:48px;display:grid;place-items:center;color:#6b7280;font-size:9px;text-align:center}@media(max-width:850px){.print-config-layout{grid-template-columns:1fr}.print-preview-wrap{position:static}.print-preview-paper{max-width:460px;margin:auto}}</style></div><div class="section card"><div class="section-title"><b>Tiendas, almacenes y cajas</b><button class="btn good" onclick="storeForm()">+ Nueva tienda</button></div><div class="store-cards">${db.stores.map(s=>`
   <div class="store-card">
@@ -1361,7 +1407,7 @@ function closeCashSummary(){
 }
 function closeCashBackSummary(){closeWizard.index=closeWizard.methods.length-1;closeCashStep()}
 function viewCashClose(id){
- const c=Object.values(db.cashByStore||{}).flatMap(cash=>cash.closed||[]).find(x=>x.id===id);
+ const c=Object.values(db.cashByStore||{}).flatMap(cash=>cash.closed||[]).find(x=>String(x.id)===String(id));
  if(!c)return alert('No se encontró el cierre.');
  const methods=['Efectivo','Yape','Plin','Izipay','Tarjeta','Transferencia'];
  const sales=(c.saleIds?.length?db.sales.filter(s=>c.saleIds.includes(s.id)):[]).filter(s=>s.status!=='ANULADA');
@@ -1371,6 +1417,105 @@ function viewCashClose(id){
  const docs=sales.slice().reverse().map(s=>`<tr><td>${new Date(s.date).toLocaleTimeString()}</td><td>${esc(s.doc)}</td><td>${esc(s.client||'Cliente General')}</td><td>${esc(s.payment||'')}</td><td>${money(s.total)}</td></tr>`).join('')||empty(5);
  modal('Ventas del cierre',`<div class="grid"><div class="card"><div class="muted">Día</div><div class="kpi">${new Date(c.date).toLocaleDateString()}</div></div><div class="card"><div class="muted">Total vendido</div><div class="kpi">${money(total)}</div><div class="muted">${sales.length||Number(c.saleCount||0)} ventas · No incluye fondo inicial</div></div></div><div class="section card"><div class="section-title"><b>Ventas por medio de pago</b></div><table class="table"><tr><th>Medio de pago</th><th>Vendido</th></tr>${rows}<tr><th>TOTAL VENTAS</th><th>${money(total)}</th></tr></table></div><div class="section card"><div class="section-title"><b>Comprobantes del cierre</b></div><table class="table"><tr><th>Hora</th><th>Documento</th><th>Cliente</th><th>Pago</th><th>Monto</th></tr>${docs}</table></div>`,`<button class="btn alt" onclick="closeModal()">Cerrar</button>`);
 }
+
+
+function superviseCashClose(id){
+  const closures=allCashClosures();
+  const c=closures.find(x=>String(x.id)===String(id));
+
+  if(!c)return alert('No se encontró el cierre.');
+
+  const stores=db.stores||[];
+  const store=stores.find(s=>String(s.id)===String(c.storeId));
+  const methods=['Efectivo','Yape','Plin','Izipay','Tarjeta','Transferencia'];
+
+  const sales=(c.saleIds?.length
+    ?db.sales.filter(s=>c.saleIds.some(id=>String(id)===String(s.id)))
+    :[]
+  ).filter(s=>s.status!=='ANULADA');
+
+  const total=Number(c.salesTotal??sales.reduce((a,s)=>a+Number(s.total||0),0));
+
+  const paymentRows=methods.map(m=>{
+    const amount=Number(c.salesByPayment?.[m]??sales.reduce((a,s)=>
+      a+(s.payments||[]).reduce((sum,p)=>
+        sum+(p.method===m?Number(p.amount||0):0),0),0));
+    return `<tr><td>${esc(m)}</td><td>${money(amount)}</td></tr>`;
+  }).join('');
+
+  const salesRows=sales.slice().reverse().map(s=>`
+    <tr>
+      <td>${new Date(s.date).toLocaleTimeString()}</td>
+      <td>${esc(s.doc||'-')}</td>
+      <td>${esc(s.client||'Cliente General')}</td>
+      <td>${esc(s.payment||'-')}</td>
+      <td>${money(Number(s.total||0))}</td>
+    </tr>
+  `).join('')||'<tr><td colspan="5">No hay comprobantes disponibles para este cierre.</td></tr>';
+
+  const page=document.getElementById('cashSupervisionContent');
+  if(!page)return alert('No se encontró la pantalla de supervisión.');
+
+  page.innerHTML=`
+    <div class="section-title">
+      <b>Supervisión del cierre</b>
+      <span class="tag">${esc(c.user||'Sin usuario')}</span>
+    </div>
+
+    <button class="btn alt smallBtn" onclick="superviseCash()">
+      ← Volver al historial
+    </button>
+
+    <div class="grid section">
+      <div class="card">
+        <span class="muted">Sucursal</span>
+        <div class="kpi">${esc(store?.name||'Sin sucursal')}</div>
+      </div>
+      <div class="card">
+        <span class="muted">Fecha del cierre</span>
+        <div><b>${new Date(c.date).toLocaleString()}</b></div>
+      </div>
+      <div class="card">
+        <span class="muted">Total vendido</span>
+        <div class="kpi">${money(total)}</div>
+        <span class="muted">${sales.length||Number(c.saleCount||0)} ventas</span>
+      </div>
+      <div class="card">
+        <span class="muted">Diferencia de caja</span>
+        <div class="kpi ${Number(c.difference||0)?'danger':'success'}">
+          ${money(Number(c.difference||0))}
+        </div>
+      </div>
+    </div>
+
+    <div class="section card">
+      <div class="section-title"><b>Cuadre de caja</b></div>
+      <div class="grid">
+        <div><span class="muted">Fondo inicial</span><div class="kpi">${money(Number(c.opening||0))}</div></div>
+        <div><span class="muted">Efectivo esperado</span><div class="kpi">${money(Number(c.expected||0))}</div></div>
+        <div><span class="muted">Monto declarado</span><div class="kpi">${money(Number(c.declared||0))}</div></div>
+      </div>
+    </div>
+
+    <div class="section card">
+      <div class="section-title"><b>Ventas por medio de pago</b></div>
+      <table class="table">
+        <tr><th>Medio de pago</th><th>Importe</th></tr>
+        ${paymentRows}
+        <tr><th>Total vendido</th><th>${money(total)}</th></tr>
+      </table>
+    </div>
+
+    <div class="section card">
+      <div class="section-title"><b>Comprobantes de este cierre</b></div>
+      <table class="table">
+        <tr><th>Hora</th><th>Documento</th><th>Cliente</th><th>Pago</th><th>Monto</th></tr>
+        ${salesRows}
+      </table>
+    </div>
+  `;
+}
+
 
 function confirmCashClose(){
  const cash=currentCash();
@@ -2986,6 +3131,135 @@ function deleteStore(id) {
 
 
 function modal(title,body,actions){document.getElementById('modalHost')?.remove();document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="modalHost"><div class="modalbox"><div class="section-title"><h3>${esc(title)}</h3><button class="iconbtn" onclick="closeModal()">×</button></div>${body}<div class="modalactions">${actions}<button class="btn alt" onclick="closeModal()">Cancelar</button></div></div></div>`)}function closeModal(){document.getElementById('modalHost')?.remove()}
+
+
+
+
+function superviseCash(){
+  if(session.role==='Cajero'){
+    return alert('No tienes permiso para supervisar cierres de caja.');
+  }
+
+  const closures=allCashClosures().slice().sort(
+    (a,b)=>new Date(b.date)-new Date(a.date)
+  );
+  const stores=db.stores||[];
+
+  const storeGroups=stores.map(store=>{
+    const items=closures.filter(
+      c=>String(c.storeId)===String(store.id)
+    );
+
+    return {id:store.id,name:store.name||('Sucursal '+store.id),items};
+  });
+
+
+
+  const page=document.getElementById('cashSupervisionContent');
+  if(!page)return alert('No se encontró el área de supervisión.');
+
+  page.innerHTML=`
+    <div class="cashHistoryList">
+      <p class="muted">
+        Selecciona una sucursal para consultar sus cierres anteriores.
+      </p>
+
+      ${storeGroups.map((g,i)=>`
+        <div class="card section">
+          <div class="section-title">
+            <b>${esc(g.name)}</b>
+            <span class="tag">${g.items.length} cierres</span>
+          </div>
+
+          <button class="btn good"
+            onclick="superviseCashStore(${i})">
+            Supervisar sucursal
+          </button>
+        </div>
+      `).join('')}
+
+      ${!storeGroups.length?
+        '<p class="muted">No hay sucursales registradas.</p>':''}
+    </div>
+  `;
+
+  window.cashSupervisionGroups=storeGroups;
+}
+
+function superviseCashStore(index){
+  const group=window.cashSupervisionGroups?.[index];
+  if(!group)return alert('No se encontró la sucursal.');
+
+  const page=document.getElementById('cashSupervisionContent');
+  if(!page)return;
+
+  const byDay={};
+
+  group.items.forEach(c=>{
+    const day=new Date(c.date).toLocaleDateString('en-CA');
+    (byDay[day] ||= []).push(c);
+  });
+
+  const days=Object.keys(byDay).sort((a,b)=>b.localeCompare(a));
+
+  page.innerHTML=`
+    <div class="section card">
+      <div class="section-title">
+        <b>${esc(group.name)}</b>
+        <button class="btn alt" onclick="superviseCash()">← Volver a sucursales</button>
+      </div>
+
+      ${days.map(day=>`
+        <div class="card section">
+          <div class="section-title">
+            <b>${new Date(day+'T12:00:00').toLocaleDateString()}</b>
+            <span class="tag">${byDay[day].length} cierres</span>
+          </div>
+
+          ${byDay[day].map(c=>`
+            <div class="card section">
+              <div class="section-title">
+                <b>${new Date(c.date).toLocaleTimeString()} · ${esc(c.user||'Sin usuario')}</b>
+                <span class="tag">Cerrada</span>
+              </div>
+
+              <div class="grid">
+                <div>
+                  <span class="muted">Fondo inicial</span>
+                  <div class="kpi">${money(Number(c.opening||0))}</div>
+                </div>
+                <div>
+                  <span class="muted">Total vendido</span>
+                  <div class="kpi">${money(Number(c.salesTotal||0))}</div>
+                </div>
+                <div>
+                  <span class="muted">Monto declarado</span>
+                  <div class="kpi">${money(Number(c.declared||0))}</div>
+                </div>
+                <div>
+                  <span class="muted">Diferencia</span>
+                  <div class="kpi ${Number(c.difference||0)?'danger':'success'}">
+                    ${money(Number(c.difference||0))}
+                  </div>
+                </div>
+              </div>
+
+              <button class="btn good"
+                onclick="superviseCashClose('${c.id}')">
+                Más detalle
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+
+      ${!days.length?
+        '<p class="muted">Esta sucursal todavía no tiene cierres.</p>':''}
+    </div>
+  `;
+}
+
+
 function resetDemo(){if(confirm('Esto borrará los datos locales de SmartTuClick y volverá a la demo inicial.')){localStorage.removeItem(KEY);db=clone(seed);session=null;localStorage.removeItem(SESSION_KEY);view='dashboard';render()}}
 function editUser(id) {
   const u = db.users.find(x => String(x.id) === String(id));
