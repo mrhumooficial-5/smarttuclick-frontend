@@ -370,7 +370,26 @@ function render(){const root=document.getElementById('app');if(!session){root.in
 if(view==='pos')setTimeout(toggleCashReceived,0);
 if(view==='cashSupervision')superviseCash()}
 
-function loginPage(){return `<div class="login"><div class="loginbox card"><div class="brand big">⚡ SmartTuClick</div><p class="muted">Punto de venta y gestión empresarial · modo demo local</p><label>Usuario<select id="loginUser" class="input">${db.users.filter(u=>u.active).map(u=>`<option value="${u.id}">${esc(u.user)} · ${esc(u.role)}</option>`).join('')}</select></label><label>Contraseña<input id="loginPass" class="input" type="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')login()"></label><button class="btn good full" onclick="login()">Ingresar</button><div class="notice">🟡 Autenticación local de demostración. No es seguridad de producción.</div></div></div>`}
+
+function loginPage(){
+  return `<div class="login">
+    <div class="loginbox card">
+      <div class="brand big">⚡ SmartTuClick</div>
+      <p class="muted">Punto de venta y gestión empresarial</p>
+      <label>Usuario
+        <select id="loginUser" class="input">
+          ${db.users.filter(u=>u.active).map(u=>`<option value="${u.id}">${esc(u.user)} · ${esc(u.role)}</option>`).join('')}
+        </select>
+      </label>
+      <label>Contraseña
+        <input id="loginPass" class="input" type="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')login()">
+      </label>
+      <button class="btn good full" onclick="login()">Ingresar</button>
+      <div class="notice">Conectando con VendiX</div>
+    </div>
+  </div>`;
+}
+
 async function login(){
   const u=db.users.find(x=>x.id===Number(document.getElementById('loginUser')?.value));
   const pass=document.getElementById('loginPass')?.value||'';
