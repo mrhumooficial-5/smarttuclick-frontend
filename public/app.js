@@ -552,7 +552,7 @@ cash:()=>{const cash=currentCash();return `<div class="grid"><div class="card"><
 <input id="opening" class="input" type="number" min="0" step="0.01" placeholder="Monto inicial" required>
 <button class="btn good" onclick="openCash()">Aperturar caja</button>
 `}</div><div class="card"><b>Movimientos del turno</b><table class="table"><tr><th>Hora</th><th>Tipo</th><th>Detalle</th><th>Monto</th></tr>${(cash.movements||[]).slice(-30).reverse().map(x=>`<tr><td>${new Date(x.date).toLocaleTimeString()}</td><td>${x.type}</td><td>${esc(x.detail)}</td><td>${money(x.amount)}</td></tr>`).join('')||empty(4)}</table></div></div>`},
-products:()=>`<div class="toolbar"><button class="btn good" onclick="productForm()">+ Nuevo producto</button><button class="btn alt" onclick="downloadProductTemplate()">📄 Descargar plantilla</button><button class="btn alt" onclick="importProductsExcel()">📥 Importar Excel</button><button class="btn alt" onclick="exportProductsExcel()">📤 Exportar Excel</button><button class="btn quickIn" onclick="quickStockMove()">↓ Ingreso rápido</button><button class="btn quickOut" onclick="quickStockMove()">↑ Salida rápida</button><input id="productSearch" class="input grow" placeholder="Buscar producto/SKU/código" oninput="productSearch(this.value)"><select id="catFilter" class="input" onchange="productSearch(document.getElementById('productSearch')?.value||'')"><option value="">Todas las categorías</option>${[...new Set(db.products.map(p=>p.category))].map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div class="card"><table class="table"><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Costo</th><th>Precio</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr><tbody id="productRows">${productRows()}</tbody></table></div>`,
+products:()=>`<div class="toolbar"><button class="btn good" onclick="productForm()">+ Nuevo producto</button><button class="btn alt" onclick="downloadProductTemplate()">📄 Descargar plantilla</button><button class="btn alt" onclick="importProductsExcel()">📥 Importar Excel</button><button class="btn alt" onclick="exportProductsExcel()">📤 Exportar Excel</button><button class="btn quickIn" onclick="quickStockMove(null,'ENTRADA')">↓ Ingreso rápido</button><button class="btn quickOut" onclick="quickStockMove(null,'SALIDA')">↑ Salida rápida</button><input id="productSearch" class="input grow" placeholder="Buscar producto/SKU/código" oninput="productSearch(this.value)"><select id="catFilter" class="input" onchange="productSearch(document.getElementById('productSearch')?.value||'')"><option value="">Todas las categorías</option>${[...new Set(db.products.map(p=>p.category))].map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div class="card"><table class="table"><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Costo</th><th>Precio</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr><tbody id="productRows">${productRows()}</tbody></table></div>`,
 inventory:()=>`<div class="grid"><div class="card"><span>Inventario valorizado</span><div class="kpi">${money(db.products.reduce((a,p)=>a+stockOf(p)*p.cost,0))}</div></div><div class="card"><span>Movimientos</span><div class="kpi">${db.movements.filter(m=>m.storeId===currentStore().id).length}</div></div><div class="card"><span>Stock crítico</span><div class="kpi danger">${db.products.filter(p=>stockOf(p)<=p.min).length}</div></div><div class="card"><span>Unidades</span><div class="kpi">${db.products.reduce((a,p)=>a+stockOf(p),0)}</div></div></div><div class="toolbar section"><input class="input grow" id="kardexSearch" placeholder="Filtrar Kardex" oninput="kardexFilter(this.value)"><button class="btn alt" onclick="adjustStockForm()">Ajuste de inventario</button></div><div class="card"><table class="table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Antes</th><th>Cant.</th><th>Después</th><th>Motivo</th><th>Ref.</th></tr></thead><tbody id="kardexRows">${kardexRows()}</tbody></table></div>`,
 purchases:()=>`<div class="toolbar"><button class="btn good" onclick="purchaseForm()">+ Registrar compra</button><button class="btn alt" onclick="supplierForm()">+ Proveedor</button></div><div class="card"><table class="table"><tr><th>Fecha</th><th>Proveedor</th><th>Documento</th><th>Producto</th><th>Cant.</th><th>Total</th><th>Estado</th></tr>${db.purchases.slice().reverse().map(p=>`<tr><td>${new Date(p.date).toLocaleDateString()}</td><td>${esc(p.supplier)}</td><td>${esc(p.doc)}</td><td>${esc(p.product)}</td><td>${p.qty}</td><td>${money(p.total)}</td><td>${p.status}</td></tr>`).join('')||empty(7)}</table></div>`,
 transfers:()=>`<div class="toolbar"><button class="btn good" onclick="transferForm()">+ Nueva transferencia</button></div><div class="card"><table class="table"><tr><th>Fecha</th><th>Origen</th><th>Destino</th><th>Producto</th><th>Cant.</th><th>Estado</th><th></th></tr>${db.transfers.slice().reverse().map(t=>`<tr><td>${new Date(t.date).toLocaleDateString()}</td><td>${esc(t.from)}</td><td>${esc(t.to)}</td><td>${esc(t.product)}</td><td>${t.qty}</td><td><span class="tag">${t.status}</span></td><td>${t.status==='PENDIENTE'?`<button class="btn good" onclick="receiveTransfer(${t.id})">Recibir</button>`:''}</td></tr>`).join('')||empty(7)}</table></div><div class="notice">🟡 <b>Integración backend pendiente:</b> esta versión ejecuta las transferencias en local. Multi-almacén remoto requiere API + base de datos.</div>`,
@@ -1619,6 +1619,15 @@ function productForm(){modal('Nuevo producto',`
   <input id="pmin" class="input" type="number" min="0" step="0.001" placeholder="Alerta de stock mínimo">
 </div>
 
+<label>
+  Tipo de afectación IGV
+  <select id="pIgv" class="input">
+    <option value="10" selected>Gravado - Operación onerosa</option>
+    <option value="20">Exonerado - Operación onerosa</option>
+    <option value="30">Inafecto - Operación onerosa</option>
+  </select>
+</label>
+
 <div style="margin-top:12px">
   <label for="pimage">Foto del producto</label>
   <input id="pimage" class="input" type="file" accept="image/*">
@@ -1767,8 +1776,20 @@ function editProduct(id){let p=db.products.find(x=>x.id===id);if(!p)return;modal
   ${p.image ? `<img src="${p.image}" alt="${esc(p.name)}" style="display:block;width:120px;height:120px;object-fit:contain;margin:8px 0;border:1px solid #ddd;border-radius:8px">` : '<div style="color:#777;margin:8px 0">Este producto no tiene foto</div>'}
   <label for="epimage">Cambiar foto</label>
   <input id="epimage" class="input" type="file" accept="image/*">
+
   <label><input id="epremoveimage" type="checkbox"> Quitar foto actual</label>
-</div><label><input id="epblockNegative" type="checkbox" ${p.blockNegative!==false?'checked':''}> Bloquear venta cuando no haya stock</label><br><label><input id="epallowNegative" type="checkbox" ${p.allowNegative?'checked':''}> Permitir vender con stock negativo</label></div>`,`<button class="btn good" onclick="saveEditProduct(${id})">Guardar</button>`)}
+</div>
+<label>Tipo de afectación IGV
+  <select id="epIgv" class="input">
+    
+<option value="10">Gravado - Operación onerosa</option>
+<option value="20">Exonerado - Operación onerosa</option>
+<option value="30">Inafecto - Operación onerosa</option>
+
+  </select>
+</label>
+<label><input id="epblockNegative" type="checkbox" ${p.blockNegative!==false?'checked':''}> Bloquear venta cuando no haya stock</label>
+<br><label><input id="epallowNegative" type="checkbox" ${p.allowNegative?'checked':''}> Permitir vender con stock negativo</label></div>`,`<button class="btn good" onclick="saveEditProduct(${id})">Guardar</button>`)}
 
 async function saveEditProduct(id){
   let p=db.products.find(x=>x.id===id);
@@ -1814,6 +1835,7 @@ async function saveEditProduct(id){
   p.cost=Number(document.getElementById('epcost').value||0);
   p.price=Number(document.getElementById('epprice').value||0);
   p.active=document.getElementById('epactive').value==='1';
+    p.tipoAfectacionIGV = document.getElementById('epIgv').value;
   p.blockNegative=document.getElementById('epblockNegative').checked;
   p.allowNegative=document.getElementById('epallowNegative').checked;
   p.image=image;
@@ -1965,6 +1987,27 @@ function processExcelProducts(rows,fileName='Excel'){
     const price=parseImportNumber(get(row,'Precio'),0);
     const stock=parseImportNumber(get(row,'Stock inicial'),0);
     const min=parseImportNumber(get(row,'Stock mínimo'),0);
+        const afectacionTexto = String(
+      get(row, 'Tipo de afectación IGV') || ''
+    ).trim().toLowerCase();
+
+    let tipoAfectacionIGV = '10';
+
+    if (afectacionTexto === 'exonerado - operación onerosa') {
+      tipoAfectacionIGV = '20';
+    } else if (afectacionTexto === 'inafecto - operación onerosa') {
+      tipoAfectacionIGV = '30';
+    } else if (
+      afectacionTexto === 'gravado - operación onerosa' ||
+      afectacionTexto === ''
+    ) {
+      tipoAfectacionIGV = '10';
+    } else {
+      errors.push(
+        `Fila ${excelRow}: tipo de afectación IGV inválido: ${afectacionTexto}`
+      );
+      return;
+    }
 
     if(!sku){
       errors.push(`Fila ${excelRow}: falta SKU.`);
@@ -2039,6 +2082,7 @@ function processExcelProducts(rows,fileName='Excel'){
       price,
       stock,
       min,
+      tipoAfectacionIGV,
       existingId:existing?.id||null,
       action:existing?'ACTUALIZAR':'NUEVO'
     });
@@ -2103,9 +2147,31 @@ function processExcelProducts(rows,fileName='Excel'){
         ${news} productos nuevos · ${updates} productos existentes
       </div>
 
-      ${errorHtml}
+      
+${errorHtml}
 
-      ${previewHtml}
+<div class="formgrid">
+  <label>
+    Tienda de destino
+    <select id="importStore" class="input"
+            onchange="refreshImportWarehouses()">
+      ${(db.stores || []).filter(s => s.active !== false).map(s => `
+        <option value="${s.id}" ${String(s.id) === String(currentStore().id) ? 'selected' : ''}>
+          ${esc(s.name)}
+        </option>
+      `).join('')}
+    </select>
+  </label>
+
+  <label>
+    Almacén de destino
+    <select id="importWarehouse" class="input">
+    </select>
+  </label>
+</div>
+
+${previewHtml}
+
 
       <div class="notice">
         <b>Importante:</b> los productos existentes se actualizarán en
@@ -2129,7 +2195,29 @@ function processExcelProducts(rows,fileName='Excel'){
       </button>
     `
   );
+  refreshImportWarehouses();
 }
+
+
+function refreshImportWarehouses() {
+  const storeId = document.getElementById('importStore')?.value;
+  const select = document.getElementById('importWarehouse');
+
+  if (!select) return;
+
+  const warehouses = (db.warehouses || []).filter(
+    w => String(w.storeId) === String(storeId) &&
+         w.active !== false
+  );
+
+  select.innerHTML = warehouses.length
+    ? warehouses.map(w =>
+        `<option value="${w.id}">${esc(w.name)}</option>`
+      ).join('')
+    : '<option value="">Sin almacenes activos</option>';
+}
+
+
 
 function confirmProductImport(){
 
@@ -2141,13 +2229,26 @@ function confirmProductImport(){
     return alert('No hay productos válidos para importar.');
   }
 
+  const storeId=document.getElementById('importStore')?.value;
+  const warehouseId=document.getElementById('importWarehouse')?.value;
+
+  const warehouse=(db.warehouses||[]).find(w=>
+    String(w.id)===String(warehouseId) &&
+    String(w.storeId)===String(storeId) &&
+    w.active!==false
+  );
+
+  if(!storeId || !warehouse){
+    return alert('Selecciona una tienda y un almacén activo válidos.');
+  }
+
   let created=0;
   let updated=0;
-  let stockUnits=0;
+  let stockAdjustments=0;
 
   for(const x of rows){
 
-    let p=db.products.find(p=>String(p.sku)===x.sku);
+    let p=db.products.find(p=>String(p.sku)===String(x.sku));
 
     if(p){
 
@@ -2159,22 +2260,41 @@ function confirmProductImport(){
       p.cost=x.cost;
       p.price=x.price;
       p.min=x.min;
+      p.tipoAfectacionIGV=x.tipoAfectacionIGV||p.tipoAfectacionIGV||'10';
       p.active=true;
+
+      const before=stockOf(p,storeId,warehouse.id);
+      const target=Math.max(0,Number(x.stock)||0);
+
+      if(before!==target){
+
+        setStock(p,target,storeId,warehouse.id);
+
+        db.movements.push({
+          id:db.seq.move++,
+          date:new Date().toISOString(),
+          productId:p.id,
+          product:p.name,
+          type:target>before?'ENTRADA':'SALIDA',
+          operation:'AJUSTE_IMPORTACION_EXCEL',
+          before:before,
+          qty:Math.abs(target-before),
+          after:target,
+          reason:'AJUSTE DE STOCK POR IMPORTACIÓN EXCEL',
+          reference:'IMP-'+p.id+'-'+Date.now(),
+          user:session.name,
+          storeId:warehouse.storeId,
+          warehouseId:warehouse.id
+        });
+
+        stockAdjustments++;
+      }
 
       updated++;
 
     }else{
 
       const id=uid();
-
-      const storeStocks={};
-
-      for(const st of db.stores||[]){
-        storeStocks[st.id]=
-          st.id===currentStore().id
-            ?x.stock
-            :0;
-      }
 
       p={
         id,
@@ -2186,15 +2306,21 @@ function confirmProductImport(){
         unit:x.unit,
         cost:x.cost,
         price:x.price,
-        stock:x.stock,
+        stock:0,
         min:x.min,
+        tipoAfectacionIGV:x.tipoAfectacionIGV||'10',
         active:true,
-        storeStocks
+        storeStocks:{},
+        warehouseStocks:{}
       };
 
       db.products.push(p);
 
-      if(x.stock>0){
+      const initialStock=Math.max(0,Number(x.stock)||0);
+
+      setStock(p,initialStock,storeId,warehouse.id);
+
+      if(initialStock>0){
 
         db.movements.push({
           id:db.seq.move++,
@@ -2202,16 +2328,16 @@ function confirmProductImport(){
           productId:id,
           product:x.name,
           type:'ENTRADA',
+          operation:'IMPORTACION_EXCEL',
           before:0,
-          qty:x.stock,
-          after:x.stock,
-          reason:'IMPORTACIÓN EXCEL',
+          qty:initialStock,
+          after:initialStock,
+          reason:'STOCK INICIAL POR IMPORTACIÓN EXCEL',
           reference:'IMP-'+id,
           user:session.name,
-          storeId:currentStore().id
+          storeId:warehouse.storeId,
+          warehouseId:warehouse.id
         });
-
-        stockUnits+=x.stock;
       }
 
       created++;
@@ -2221,7 +2347,7 @@ function confirmProductImport(){
   audit(
     'IMPORTAR',
     'PRODUCTOS',
-    `Excel: ${pendingProductImport.fileName} · Nuevos: ${created} · Actualizados: ${updated}`
+    `Excel: ${pendingProductImport.fileName} · Tienda: ${storeId} · Almacén: ${warehouse.name} · Nuevos: ${created} · Actualizados: ${updated} · Ajustes de stock: ${stockAdjustments}`
   );
 
   pendingProductImport=null;
@@ -2231,12 +2357,17 @@ function confirmProductImport(){
   render();
 
   alert(
-    'Importación completada.\\n\\n'+
-    'Productos nuevos: '+created+'\\n'+
-    'Productos actualizados: '+updated+'\\n'+
-    'Stock inicial agregado: '+stockUnits
+    'Importación completada.\n\n'+
+    'Productos nuevos: '+created+'\n'+
+    'Productos actualizados: '+updated+'\n'+
+    'Ajustes de stock: '+stockAdjustments+'\n'+
+    'Almacén: '+warehouse.name
   );
 }
+
+
+
+
 function downloadProductTemplate(){
   const link=document.createElement('a');
   link.href='archivos/SmartTuClick-Plantilla-Importacion-Productos.xlsx';
@@ -2278,6 +2409,7 @@ async function exportProductsExcel(){
     }
 
 
+    
     const rows=db.products.map(p=>[
       p.sku||'',
       p.barcode||'',
@@ -2288,13 +2420,15 @@ async function exportProductsExcel(){
       Number(p.cost||0),
       Number(p.price||0),
       Number(stockOf(p)||0),
-      Number(p.min||0)
+      Number(p.min||0),
+      String(p.tipoAfectacionIGV||'10')
     ]);
+
 
     // Limpia solamente los datos de productos
     // y conserva el formato y los desplegables de la plantilla.
     for(let r=2;r<=ws.rowCount;r++){
-      for(let c=1;c<=10;c++){
+      for(let c=1;c<=11;c++){
         ws.getCell(r,c).value=null;
       }
     }
@@ -2310,7 +2444,7 @@ async function exportProductsExcel(){
 
     // Ajusta el ancho de columnas
     const widths=[
-      16,20,32,20,20,12,12,12,15,15
+      16,20,32,20,20,12,12,12,15,15,24
     ];
 
     widths.forEach((width,index)=>{
@@ -2463,6 +2597,19 @@ function quickStockMove(productId, type) {
           </select>
         </label>
 
+        
+<label>
+  Tipo de afectación IGV
+  <select id="qmIgv" class="input">
+    
+<option value="10">Gravado - Operación onerosa</option>
+<option value="20">Exonerado - Operación onerosa</option>
+<option value="30">Inafecto - Operación onerosa</option>
+
+  </select>
+</label>
+
+
         <div style="margin:10px 0">
           <label for="qmImage">Foto del producto</label>
           <input id="qmImage" class="input" type="file" accept="image/*">
@@ -2559,6 +2706,12 @@ function refreshQuickStock() {
     x => String(x.id) === String(productId)
   );
 
+  // Actualizar tipo de afectación IGV según el producto
+  const igvSelect = document.getElementById('qmIgv');
+  if (igvSelect) {
+    igvSelect.value = p?.tipoAfectacionIGV || '10';
+  }
+
   const storeId = document.getElementById('qmStore')?.value;
   const warehouseId = document.getElementById('qmWarehouse')?.value;
 
@@ -2576,8 +2729,6 @@ function refreshQuickStock() {
       : 0;
   }
 }
-
-
 
 
 function saveQuickStockMove(type) {
@@ -2613,6 +2764,15 @@ function saveQuickStockMove(type) {
   if (type === 'SALIDA' && db.settings.strictStock && qty > before) {
     return alert(`Stock insuficiente. Disponible: ${before} ${p.unit}.`);
   }
+  // Actualizar afectación IGV solo al registrar un ingreso
+if (type === 'ENTRADA') {
+  const igvSelect = document.getElementById('qmIgv');
+  const igv = igvSelect?.value;
+
+  if (['10', '20', '30'].includes(igv)) {
+    p.tipoAfectacionIGV = igv;
+  }
+}
 
   const after = type === 'ENTRADA'
     ? before + qty
