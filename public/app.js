@@ -211,7 +211,7 @@ async function stcPull(){
   return data;
 }
 
-async function stcPull(){
+async function stcPush(){
   if(!stcToken||!stcReady)return;
   try{
     const data=await stcApi('/api/state',{method:'PUT',body:JSON.stringify({state:db,source:STC_TAB_ID})});
