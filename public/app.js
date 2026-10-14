@@ -436,22 +436,46 @@ function loginPage(){
 }
 
 
+
 async function login(){
-  const u=db.users.find(x=>x.id===Number(document.getElementById('loginUser')?.value));
-  const pass=document.getElementById('loginPass')?.value||'';
-  if(!u||!u.active||u.password!==pass)return alert('Usuario o contraseña incorrectos.');
-  session=u;
+  const userId = Number(document.getElementById('loginUser')?.value);
+  const pass = document.getElementById('loginPass')?.value || '';
+  const u = db.users.find(x => x.id === userId);
 
-if(u.role==='Administrador'){
-  adminStoreSelected=false;
+  if (!u || !u.active) {
+    return alert('Usuario no válido o inactivo.');
+  }
+
+  if (!pass) {
+    return alert('Ingresa tu contraseña.');
+  }
+
+  try {
+    const connected = await stcConnect(u, pass);
+
+    if (!connected) return;
+
+    const serverUser = db.users.find(
+      x => String(x.id) === String(userId)
+    ) || u;
+
+    session = serverUser;
+
+    if (session.role === 'Administrador') {
+      adminStoreSelected = false;
+    }
+
+    localStorage.setItem(SESSION_KEY, String(session.id));
+    view = 'dashboard';
+
+    render();
+    stcStartEvents();
+  } catch (e) {
+    console.error('Error en inicio de sesión:', e);
+    alert('No se pudo iniciar sesión. Revisa la conexión con el servidor.');
+  }
 }
 
-localStorage.setItem(SESSION_KEY,String(u.id));
-view='dashboard';
-  render();
-  await stcConnect(u,pass);
-  stcStartEvents();
-}
 
 function logout(){
   if(currentCash().open){
