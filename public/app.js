@@ -3196,7 +3196,42 @@ if (role === 'Administrador') {
   render();
 }
 
-function salesRows(list=db.sales){return list.slice().reverse().map(s=>`<tr><td>${new Date(s.date).toLocaleString()}</td><td>${esc(s.doc)}</td><td>${esc(s.client)}</td><td>${esc(s.store||'-')}</td><td>${esc(s.payment)}</td><td>${money(s.total)}</td><td>${s.status}</td><td>${s.status!=='ANULADA'?`<button class="btn alt" onclick="printSale(${s.id})">Ver/Imprimir</button> <button class="btn alt" onclick="voidSale(${s.id})">Anular</button>`:''}</td></tr>`).join('')||empty(8)}function salesFilter(q){document.getElementById('salesRows').innerHTML='<tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Tienda</th><th>Pago</th><th>Total</th><th>Estado</th><th></th></tr>'+salesRows(db.sales.filter(s=>(s.doc+s.client).toLowerCase().includes(q.toLowerCase())))}function voidSale(id){let s=db.sales.find(x=>x.id===id);if(!s||s.status==='ANULADA')return;if(!confirm('¿Anular esta venta? La demo revertirá stock y medios de pago.'))return;s.status='ANULADA';for(const i of s.items){let p=db.products.find(x=>x.id===i.id);if(p){let before=stockOf(p,s.storeId);setStock(p,before+i.qty,s.storeId);db.movements.push({id:db.seq.move++,date:new Date().toISOString(),productId:p.id,product:p.name,type:'ENTRADA',before,qty:i.qty,after:stockOf(p,s.storeId),reason:'ANULACIÓN VENTA',storeId:s.storeId,reference:s.doc,user:session.name})}}let c=db.clients.find(x=>x.id===s.clientId),pts=Math.floor(s.total*Number(db.settings.pointsPerSol||0));if(c){c.points=Math.max(0,(c.points||0)-pts);db.pointsLedger.push({id:uid(),date:new Date().toISOString(),clientId:c.id,type:'REVERSE',points:-pts,reference:s.doc})}let payments=s.payments?.length?s.payments:[{method:s.payment,amount:s.total}];const cash=db.cashByStore?.[s.storeId];
+function salesVisibleToCurrentUser(){
+  if(session?.role!=='Cajero'){
+    return db.sales;
+  }
+
+  const cash=currentCash();
+
+  if(!cash.open || !cash.registerId){
+    return [];
+  }
+
+  return db.sales.filter(s=>
+    String(s.storeId)===String(currentStore().id) &&
+    String(s.registerId)===String(cash.registerId) &&
+    String(s.userId)===String(session.id) &&
+    (!cash.openedAt || s.date>=cash.openedAt)
+  );
+}
+
+function salesRows(list=salesVisibleToCurrentUser()){
+  return list.slice().reverse().map(s=>`<tr><td>${new Date(s.date).toLocaleString()}</td><td>${esc(s.doc)}</td><td>${esc(s.client)}</td><td>${esc(s.store||'-')}</td><td>${esc(s.payment)}</td><td>${money(s.total)}</td><td>${s.status}</td><td>${s.status!=='ANULADA'?`<button class="btn alt" onclick="printSale(${s.id})">Ver/Imprimir</button> <button class="btn alt" onclick="voidSale(${s.id})">Anular</button>`:''}</td></tr>`).join('')||empty(8);
+}
+
+function salesFilter(q){
+  const query=String(q||'').toLowerCase();
+
+  const filtered=salesVisibleToCurrentUser().filter(s=>
+    String(s.doc||'').toLowerCase().includes(query) ||
+    String(s.client||'').toLowerCase().includes(query)
+  );
+
+  document.getElementById('salesRows').innerHTML=
+    '<tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Tienda</th><th>Pago</th><th>Total</th><th>Estado</th><th></th></tr>'+
+    salesRows(filtered);
+}
+function voidSale(id){let s=db.sales.find(x=>x.id===id);if(!s||s.status==='ANULADA')return;if(!confirm('¿Anular esta venta? La demo revertirá stock y medios de pago.'))return;s.status='ANULADA';for(const i of s.items){let p=db.products.find(x=>x.id===i.id);if(p){let before=stockOf(p,s.storeId);setStock(p,before+i.qty,s.storeId);db.movements.push({id:db.seq.move++,date:new Date().toISOString(),productId:p.id,product:p.name,type:'ENTRADA',before,qty:i.qty,after:stockOf(p,s.storeId),reason:'ANULACIÓN VENTA',storeId:s.storeId,reference:s.doc,user:session.name})}}let c=db.clients.find(x=>x.id===s.clientId),pts=Math.floor(s.total*Number(db.settings.pointsPerSol||0));if(c){c.points=Math.max(0,(c.points||0)-pts);db.pointsLedger.push({id:uid(),date:new Date().toISOString(),clientId:c.id,type:'REVERSE',points:-pts,reference:s.doc})}let payments=s.payments?.length?s.payments:[{method:s.payment,amount:s.total}];const cash=db.cashByStore?.[s.storeId];
 if(cash?.open&&cash.paymentTotals&&String(cash.registerId)===String(s.registerId)){
   for(const pmt of payments){
     cash.paymentTotals[pmt.method]=Math.max(
@@ -3219,7 +3254,27 @@ if(cash?.open&&cash.paymentTotals&&String(cash.registerId)===String(s.registerId
     }
   }
 }save();render()}
-function exportCSV(){let rows=[['Fecha','Comprobante','Cliente','Pago','Total','Estado'],...db.sales.map(s=>[s.date,s.doc,s.client,s.payment,s.total,s.status])];let csv=rows.map(r=>r.map(x=>'"'+String(x??'').replaceAll('"','""')+'"').join(',')).join('\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='smarttuclick-ventas.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function exportCSV(){
+  const sales=salesVisibleToCurrentUser();
+
+  const rows=[
+    ['Fecha','Comprobante','Cliente','Pago','Total','Estado'],
+    ...sales.map(s=>[
+      s.date,s.doc,s.client,s.payment,s.total,s.status
+    ])
+  ];
+
+  const csv=rows.map(r=>
+    r.map(x=>'"'+String(x??'').replaceAll('"','""')+'"').join(',')
+  ).join('\n');
+
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='vendix-ventas.csv';
+  a.click();
+
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
 function loadPrintLogo(input){const file=input?.files?.[0];if(!file)return;if(file.size>2*1024*1024){alert('El logo debe pesar máximo 2 MB.');input.value='';return}const reader=new FileReader();reader.onload=()=>{db.settings.printLogo=String(reader.result||'');save();render()};reader.onerror=()=>alert('No se pudo leer la imagen del logo.');reader.readAsDataURL(file)}function removePrintLogo(){db.settings.printLogo='';save();render()}
 function saveSettings(){db.company.name=companyName.value.trim()||db.company.name;db.company.ruc=companyRuc.value.trim();db.company.igv=Number(igv.value||18)/100;currentStore().name=storeName.value.trim()||currentStore().name;db.settings.strictStock=strictStock.value==='1';db.settings.pointsPerSol=Number(pointsRate.value||0);db.settings.printer=printer.value;for(const k of ['printHeader','printTop','printBottom','printFarewell']){const el=document.getElementById(k);if(el)db.settings[k]=el.value.trim()}for(const k of ['printHeaderOn','printTopOn','printBottomOn','printFarewellOn']){const el=document.getElementById(k);if(el)db.settings[k]=el.checked}save();render()}
 
