@@ -247,9 +247,6 @@ async function stcConnect(localUser,localPassword){
   stcBusy=true;
   try{
     const apiUser=await stcServerLogin(localUser.user,localPassword);
-    if (!apiUser || !apiUser.role) {
-  throw new Error('El servidor no devolvió los datos del usuario correctamente');
-}
     let pulled=false;
     try{await stcPull();pulled=true;}catch(e){
       if(e.status===404){
