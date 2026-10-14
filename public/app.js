@@ -1880,7 +1880,7 @@ function editProduct(id){let p=db.products.find(x=>x.id===id);if(!p)return;modal
   </select>
 </label>
 <label><input id="epblockNegative" type="checkbox" ${p.blockNegative!==false?'checked':''}> Bloquear venta cuando no haya stock</label>
-<br><label><input id="epallowNegative" type="checkbox" ${p.allowNegative?'checked':''}> Permitir vender con stock negativo</label></div>`,`<button class="btn good" onclick="saveEditProduct(${id})">Guardar</button>`)}
+<br><label><input id="epallowNegative" type="checkbox" ${p.allowNegative?'checked':''}> Permitir vender con stock negativo</label></div> `,`<button class="btn danger" onclick="deleteProduct(${id})">Eliminar producto</button><button class="btn good" onclick="saveEditProduct(${id})">Guardar</button>`)}
 
 async function saveEditProduct(id){
   let p=db.products.find(x=>x.id===id);
@@ -1936,6 +1936,27 @@ async function saveEditProduct(id){
   save();
   render();
 }
+
+
+function deleteProduct(id){
+  const p = db.products.find(x => x.id === id);
+  if(!p) return;
+
+  if(!confirm(`¿Eliminar el producto "${p.name}"? No se borrarán las ventas históricas.`)){
+    return;
+  }
+
+  // Desactivar en lugar de borrar para conservar referencias históricas.
+  p.active = false;
+
+  audit('DESACTIVAR', 'PRODUCTO', p.sku);
+  closeModal();
+  save();
+  render();
+
+  alert('Producto desactivado. Las ventas históricas se conservan.');
+}
+
 let pendingProductImport = null;
 
 function loadXLSX(){
