@@ -342,6 +342,8 @@ const nav=[['dashboard','Inicio','home'],['pos','Punto de venta','sales'],['cash
 const cashLocked=['pos','products','inventory','quotes','sales'];
 
 function can(v){
+  if(!session || !session.role) return false;
+
   const p=db.roles?.[session.role]||[];
 
   if(!(p.includes('*')||p.includes(v)))return false;
