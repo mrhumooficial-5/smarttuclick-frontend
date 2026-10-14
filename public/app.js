@@ -194,6 +194,29 @@ async function stcApi(path,options={}){
   return data;
 }
 
+async function stcLoadUsers(){
+  const response = await fetch(STC_API_URL + '/api/auth/users', {
+    cache: 'no-store'
+  });
+
+  if (!response.ok) {
+    throw new Error('No se pudo cargar la lista de cajeros');
+  }
+
+  const data = await response.json();
+
+  if (!Array.isArray(data.users)) {
+    throw new Error('El servidor devolvió una lista inválida');
+  }
+
+  db.users = data.users.map(u => ({
+    ...u,
+    active: true
+  }));
+
+  return db.users;
+}
+
 async function stcServerLogin(username,password){
   const data=await stcApi('/api/auth/login',{method:'POST',body:JSON.stringify({username,password})});
   stcToken=data.token;
@@ -362,13 +385,35 @@ function navGroups(){
 }
 
 function closeMobileMenu(){document.body.classList.remove('menu-open')}
-function render(){const root=document.getElementById('app');if(!session){root.innerHTML=loginPage();return}const title=nav.find(x=>x[0]===view)?.[1]||'SmartTuClick';root.innerHTML=`<div class="shell"><div class="mobile-backdrop" onclick="closeMobileMenu()"></div><aside class="side"><div class="brand"><span class="brandmark">S</span><span>SmartTuClick</span><button class="mobile-close" onclick="closeMobileMenu()">×</button></div><div class="userbox"><b>${esc(session.name)}</b><span>${esc(session.role)} · ${esc(session.user)}</span></div><div class="nav">${navGroups()}</div><div class="sidefoot">v1.1 · LIVE<br><span>Backend: Render + Neon</span></div></aside><main class="main"><header class="appbar"><button class="menu-toggle" onclick="document.body.classList.add('menu-open')">☰</button><div class="appbar-title"><strong>${esc(title)}</strong><span>${esc(currentStore().name)}</span></div><div class="appbar-actions"><select class="input storeSelect" onchange="switchStore(this.value)">${db.stores.filter(s=>s.active).map(s=>`<option value="${s.id}" ${s.id===currentStore().id?'selected':''}>${esc(s.name)}</option>`).join('')}</select><span class="pill ${currentCash().open?'open':'closed'}">${currentCash().open?'● Caja abierta':'● Caja cerrada'}</span><span class="pill live-pill">● EN VIVO</span><button class="btn alt logout-btn" onclick="logout()">Salir</button></div></header><div class="page-head"><div><h1>${esc(title)}</h1><div class="muted">${esc(db.company.name)}</div></div></div>${pages[view]?.()||pages.dashboard()}</main></div>`;if(view==='sales'){
+function render(){const root=document.getElementById('app');
+if(!session){
+  root.innerHTML=loginPage();
+
+  if(!window.stcUsersLoading){
+    window.stcUsersLoading=true;
+
+    stcLoadUsers()
+      .then(() => {
+        if(!session) root.innerHTML=loginPage();
+      })
+      .catch(error => {
+        console.error('Error cargando usuarios:', error);
+      })
+      .finally(() => {
+        window.stcUsersLoading=false;
+      });
+  }
+
+  return;
+}
+const title=nav.find(x=>x[0]===view)?.[1]||'SmartTuClick';root.innerHTML=`<div class="shell"><div class="mobile-backdrop" onclick="closeMobileMenu()"></div><aside class="side"><div class="brand"><span class="brandmark">S</span><span>SmartTuClick</span><button class="mobile-close" onclick="closeMobileMenu()">×</button></div><div class="userbox"><b>${esc(session.name)}</b><span>${esc(session.role)} · ${esc(session.user)}</span></div><div class="nav">${navGroups()}</div><div class="sidefoot">v1.1 · LIVE<br><span>Backend: Render + Neon</span></div></aside><main class="main"><header class="appbar"><button class="menu-toggle" onclick="document.body.classList.add('menu-open')">☰</button><div class="appbar-title"><strong>${esc(title)}</strong><span>${esc(currentStore().name)}</span></div><div class="appbar-actions"><select class="input storeSelect" onchange="switchStore(this.value)">${db.stores.filter(s=>s.active).map(s=>`<option value="${s.id}" ${s.id===currentStore().id?'selected':''}>${esc(s.name)}</option>`).join('')}</select><span class="pill ${currentCash().open?'open':'closed'}">${currentCash().open?'● Caja abierta':'● Caja cerrada'}</span><span class="pill live-pill">● EN VIVO</span><button class="btn alt logout-btn" onclick="logout()">Salir</button></div></header><div class="page-head"><div><h1>${esc(title)}</h1><div class="muted">${esc(db.company.name)}</div></div></div>${pages[view]?.()||pages.dashboard()}</main></div>`;if(view==='sales'){
   console.log('Rol actual:',session.role);
   console.log('Cierres registrados:',allCashClosures().length);
   console.log('Historial generado:',root.innerHTML.includes('Historial de cierres por sucursal'));
 }
 if(view==='pos')setTimeout(toggleCashReceived,0);
 if(view==='cashSupervision')superviseCash()}
+
 
 
 function loginPage(){
@@ -385,10 +430,11 @@ function loginPage(){
         <input id="loginPass" class="input" type="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')login()">
       </label>
       <button class="btn good full" onclick="login()">Ingresar</button>
-      <div class="notice">Conectando con VendiX</div>
+      <div class="notice">Usuarios sincronizados con el servidor</div>
     </div>
   </div>`;
 }
+
 
 async function login(){
   const u=db.users.find(x=>x.id===Number(document.getElementById('loginUser')?.value));
