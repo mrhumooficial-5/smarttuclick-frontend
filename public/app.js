@@ -3465,6 +3465,15 @@ function modal(title,body,actions){document.getElementById('modalHost')?.remove(
 
 
 
+function allCashClosures(){
+  return Object.entries(db.cashByStore || {}).flatMap(([storeId, cash]) =>
+    (cash.closed || []).map(c => ({
+      ...c,
+      storeId: c.storeId ?? Number(storeId)
+    }))
+  );
+}
+
 
 function superviseCash(){
   if(session.role==='Cajero'){
