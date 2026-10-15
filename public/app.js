@@ -525,6 +525,7 @@ function currentCash(){
 
 
 
+
 function switchStore(id){
   const nextStoreId = Number(id);
   const store = db.stores.find(
@@ -535,14 +536,13 @@ function switchStore(id){
     return alert('La tienda seleccionada no existe o está inactiva.');
   }
 
-  // Los cajeros solo pueden entrar a las tiendas asignadas.
+  // Validar las tiendas autorizadas del cajero.
   if(session?.role === 'Cajero'){
     const user = db.users.find(
       u => String(u.id) === String(session.id)
     );
 
     const assignments = user?.storeAssignments || [];
-
     const allowedStoreIds = assignments.length
       ? assignments.map(a => Number(a.storeId))
       : (user?.storeIds || []).map(Number);
@@ -550,13 +550,14 @@ function switchStore(id){
     if(!allowedStoreIds.includes(nextStoreId)){
       return alert('No tienes permiso para acceder a esta tienda.');
     }
+
+    // El cajero no cambia de sucursal con la caja abierta.
+    if(currentCash().open){
+      return alert('Cierra la caja de la tienda actual antes de cambiar de tienda.');
+    }
   }
 
-  // No cambiar de tienda si la caja actual está abierta.
-  if(currentCash().open){
-    return alert('Cierra la caja de la tienda actual antes de cambiar de tienda.');
-  }
-
+  // El administrador puede cambiar de sucursal con cajas abiertas.
   db.activeStoreId = nextStoreId;
 
   if(session?.role === 'Administrador'){
