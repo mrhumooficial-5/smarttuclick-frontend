@@ -479,8 +479,11 @@ async function login(){
 }
 
 
+
 function logout(){
-  if(currentCash().open){
+  // El cajero debe cerrar su propia caja antes de salir.
+  // El administrador puede salir sin afectar las cajas abiertas.
+  if(session?.role === 'Cajero' && currentCash().open){
     return alert('Cierra la caja de la tienda activa antes de salir.');
   }
 
@@ -494,6 +497,7 @@ function logout(){
   session=null;
   render();
 }
+
 
 
 function currentStore(){return db.stores.find(s=>s.id===db.activeStoreId)||db.stores[0]}
