@@ -762,6 +762,28 @@ function posProducts(q=''){
     }).join('')||'<div class="empty">No hay productos.</div>';
 }
 function saveCartItem(id){let i=db.cart.find(x=>x.id===id);if(!i)return;let q=Number(document.getElementById('eiQty').value),price=Number(document.getElementById('eiPrice').value),disc=Number(document.getElementById('eiDisc').value||0),priceType=document.getElementById('eiPriceType').value;if(priceType==='Bonificación')price=0;if(q<=0||price<0||disc<0)return alert('Datos inválidos');i.qty=q;i.price=price;i.name=document.getElementById('eiName').value.trim()||i.name;i.discount=priceType==='Bonificación'?0:disc;i.discountType=document.getElementById('eiDiscType').value;i.priceType=priceType;i.igvType=document.getElementById('eiIgv').value.split(' ')[0];i.igvDesc=document.getElementById('eiIgvDesc').value;closeModal();save();render()}
+
+function productSearch(q=''){
+  const term=String(q||'').trim().toLowerCase();
+  const category=document.getElementById('catFilter')?.value||'';
+
+  const filtered=db.products.filter(p=>{
+    const text=[
+      p.name,
+      p.sku,
+      p.barcode,
+      p.brand,
+      p.category
+    ].join(' ').toLowerCase();
+
+    return text.includes(term)&&
+      (!category||p.category===category);
+  });
+
+  const tbody=document.getElementById('productRows');
+  if(tbody)tbody.innerHTML=productRows(filtered);
+}
+
 function posFilter(q){document.getElementById('posProducts').innerHTML=posProducts(q)}
 function focusBarcode(){if(!session)return;if(!can('pos'))return;if(!currentCash().open){alert('Caja cerrada. Debes aperturar la caja antes de usar el lector.');return}if(view!=='pos'){view='pos';render();setTimeout(focusBarcode,80);return}const el=document.getElementById('posSearch');if(el){el.focus();el.select();el.placeholder='Lector listo · escanea el código';}}
 function scan(q){q=q.trim();if(!q)return;let p=db.products.find(x=>String(x.barcode)===q||String(x.sku)===q);if(p){addCart(p.id);setTimeout(focusBarcode,30);return}alert('No existe producto con ese SKU/código.');setTimeout(focusBarcode,30)}
