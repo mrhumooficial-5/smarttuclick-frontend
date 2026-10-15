@@ -1077,3 +1077,49 @@ a {
     border-color: var(--vendix-orange);
   }
 }
+/* Identidad visual VendiX */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brandmark {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #151515;
+}
+
+.brandmark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.brand > span {
+  color: #FFFFFF;
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.brand.big {
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 800;
+  color: #151515;
+}
+
+.brand.big img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
