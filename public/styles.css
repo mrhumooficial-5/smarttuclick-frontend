@@ -962,3 +962,118 @@ textarea:focus{
     flex: 1;
   }
 }
+
+
+/* =========================================
+   VENDIX - IDENTIDAD VISUAL OFICIAL
+   ========================================= */
+
+:root {
+  --vendix-orange: #FF7800;
+  --vendix-black: #151515;
+  --vendix-white: #FFFFFF;
+  --vendix-gray: #F3F4F6;
+}
+
+/* Fondo general y contenido */
+body {
+  background: var(--vendix-gray);
+  color: var(--vendix-black);
+}
+
+/* Menú lateral */
+.side {
+  background: var(--vendix-black);
+  color: var(--vendix-white);
+}
+
+.sidefoot {
+  background: var(--vendix-black);
+}
+
+/* Navegación */
+.nav button:hover,
+.nav button.active {
+  background: var(--vendix-orange);
+  color: var(--vendix-black);
+}
+
+/* Botones principales */
+.btn.good {
+  background: var(--vendix-orange);
+  color: var(--vendix-black);
+}
+
+.btn.good:hover {
+  background: #E86E00;
+}
+
+/* Botones secundarios */
+.btn.alt {
+  background: var(--vendix-gray);
+  color: var(--vendix-black);
+  border: 1px solid #D1D5DB;
+}
+
+/* Botones generales */
+.btn {
+  background: var(--vendix-black);
+  color: var(--vendix-white);
+}
+
+/* Campos y selectores */
+.input,
+select {
+  background: var(--vendix-white);
+  color: var(--vendix-black);
+  border-color: #D1D5DB;
+}
+
+.input:focus,
+select:focus {
+  outline: 2px solid var(--vendix-orange);
+  outline-offset: 1px;
+  border-color: var(--vendix-orange);
+}
+
+/* Tarjetas y tablas */
+.card,
+.product,
+.modalbox {
+  background: var(--vendix-white);
+  color: var(--vendix-black);
+}
+
+.table {
+  background: var(--vendix-white);
+}
+
+.table th {
+  background: var(--vendix-gray);
+  color: var(--vendix-black);
+}
+
+/* Elementos seleccionados y etiquetas */
+.tag {
+  background: #FFF0E0;
+  color: #8A3E00;
+}
+
+/* Enlaces y detalles de marca */
+a {
+  color: var(--vendix-orange);
+}
+
+::selection {
+  background: var(--vendix-orange);
+  color: var(--vendix-black);
+}
+
+/* Mantener legibilidad en móviles */
+@media (max-width: 720px) {
+  .nav button.active {
+    background: var(--vendix-orange);
+    color: var(--vendix-black);
+    border-color: var(--vendix-orange);
+  }
+}
