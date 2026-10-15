@@ -788,10 +788,21 @@ function changeCart(id,d){
 function syncSaleDocClient(){const type=document.getElementById('saleDocType')?.value;if(type==='FACTURA'){const sel=document.getElementById('saleDocSearchType');if(sel)sel.value='RUC';}else if(type==='BOLETA'){const sel=document.getElementById('saleDocSearchType');if(sel)sel.value='DNI';}lookupSaleClient()}
 function clientFormForSale(docType='DNI',doc=''){modal('Añadir cliente',`<div class="formgrid"><select id="cdt" class="input"><option ${docType==='DNI'?'selected':''}>DNI</option><option ${docType==='RUC'?'selected':''}>RUC</option><option ${docType==='CE'?'selected':''}>CE</option></select><input id="cd" class="input" value="${esc(doc)}" placeholder="DNI / RUC"><input id="cn" class="input" placeholder="Nombre"><input id="caName" class="input" placeholder="Apellido"><input id="ct" class="input" placeholder="Teléfono"></div><p class="muted">El cliente quedará seleccionado automáticamente para esta venta.</p>`,`<button class="btn good" onclick="saveClientForSale()">Guardar y seleccionar</button>`)}
 function saveClientForSale(){const type=document.getElementById('cdt')?.value||'DNI',doc=(document.getElementById('cd')?.value||'').trim(),name=(document.getElementById('cn')?.value||'').trim(),last=(document.getElementById('caName')?.value||'').trim(),phone=(document.getElementById('ct')?.value||'').trim();if(!name)return alert('Nombre obligatorio.');if(type!=='RUC'&&!doc)return alert('Documento obligatorio.');if(doc&&db.clients.some(x=>x.doc===doc))return alert('Ese documento ya está registrado.');const c={id:uid(),docType:type,doc:doc||'00000000',name:[name,last].filter(Boolean).join(' '),phone,email:'',address:'',points:0};db.clients.push(c);save();closeModal();if(document.getElementById('saleClient'))document.getElementById('saleClient').value=c.id;if(document.getElementById('saleDocSearchType'))document.getElementById('saleDocSearchType').value=type;if(document.getElementById('saleClientDoc'))document.getElementById('saleClientDoc').value=c.doc;if(document.getElementById('saleClientResult'))document.getElementById('saleClientResult').innerHTML=`<b>${esc(c.name)}</b> · ${esc(c.docType)} ${esc(c.doc)}`;}
+
 function finishSale(){
   if(!session||!can('pos'))return alert('Sin permiso.');
   if(!currentCash().open)return alert('Abre la caja antes de cobrar.');
   if(!db.cart.length)return alert('Carrito vacío');
+
+  // Confirmar el cliente usando el documento ingresado.
+  const doc=(document.getElementById('saleClientDoc')?.value||'').trim();
+
+  if(doc){
+    const client=lookupSaleClient(false);
+    if(!client){
+      return alert('El cliente ingresado no está registrado. Busca un cliente válido o regístralo antes de cobrar.');
+    }
+  }
 
   const payment=document.getElementById('salePayment')?.value||'Efectivo';
 
@@ -814,6 +825,7 @@ function finishSale(){
     received
   }]);
 }
+
 
 function completeSale(payments){
   const cash=currentCash();
