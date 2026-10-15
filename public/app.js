@@ -496,41 +496,32 @@ function logout(){
 }
 
 
-function currentStore(){
-  const activeStore = db.stores.find(
-    s => Number(s.id) === Number(db.activeStoreId) && s.active
-  );
-
-  if(session?.role !== 'Cajero'){
-    return activeStore || db.stores.find(s => s.active) || db.stores[0];
+function currentStore(){return db.stores.find(s=>s.id===db.activeStoreId)||db.stores[0]}
+function currentCash(){
+  const id=currentStore().id;
+  if(!db.cashByStore)db.cashByStore={};
+  if(!db.cashByStore[id]){
+    db.cashByStore[id]={
+      open:false,
+      opening:0,
+      expected:0,
+      openedAt:null,
+      userId:null,
+      registerId:null,
+      closed:[],
+      movements:[],
+      paymentTotals:{
+        Efectivo:0,
+        Yape:0,
+        Plin:0,
+        Izipay:0,
+        Tarjeta:0,
+        Transferencia:0
+      }
+    };
   }
-
-  const user = db.users.find(
-    u => String(u.id) === String(session.id)
-  );
-
-  const assignments = user?.storeAssignments || [];
-
-  const allowedStoreIds = assignments.length
-    ? assignments.map(a => Number(a.storeId))
-    : (user?.storeIds || []).map(Number);
-
-  if(activeStore && allowedStoreIds.includes(Number(activeStore.id))){
-    return activeStore;
-  }
-
-  const authorizedStore = db.stores.find(
-    s => s.active && allowedStoreIds.includes(Number(s.id))
-  );
-
-  if(authorizedStore){
-    db.activeStoreId = authorizedStore.id;
-    return authorizedStore;
-  }
-
-  return null;
+  return db.cashByStore[id];
 }
-
 
 
 
