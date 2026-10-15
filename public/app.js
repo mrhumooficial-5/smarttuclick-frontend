@@ -311,10 +311,13 @@ setInterval(()=>{
   if (
     view === 'dashboard' ||
     view === 'sales' ||
-    view === 'inventory' ||
-    view === 'reports'
+    view === 'inventory'
   ) {
     render();
+  }
+
+  if(view === 'reports'){
+    stcRemoteRefresh();
   }
 },3000);
 
