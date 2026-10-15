@@ -545,16 +545,36 @@ function allCashClosures(){
 }
 
 
+
 function switchStore(id){
   const nextStoreId = Number(id);
+  const store = db.stores.find(
+    s => Number(s.id) === nextStoreId && s.active
+  );
 
-  if(!db.stores.some(s => s.id === nextStoreId && s.active)){
+  if(!store){
     return alert('La tienda seleccionada no existe o está inactiva.');
   }
 
-  // Los cajeros no pueden cambiar de sucursal con su caja abierta.
-  // El administrador sí puede cambiar para supervisar cada sucursal.
-  if(session?.role !== 'Administrador' && currentCash().open){
+  // Los cajeros solo pueden entrar a las tiendas asignadas.
+  if(session?.role === 'Cajero'){
+    const user = db.users.find(
+      u => String(u.id) === String(session.id)
+    );
+
+    const assignments = user?.storeAssignments || [];
+
+    const allowedStoreIds = assignments.length
+      ? assignments.map(a => Number(a.storeId))
+      : (user?.storeIds || []).map(Number);
+
+    if(!allowedStoreIds.includes(nextStoreId)){
+      return alert('No tienes permiso para acceder a esta tienda.');
+    }
+  }
+
+  // No cambiar de tienda si la caja actual está abierta.
+  if(currentCash().open){
     return alert('Cierra la caja de la tienda actual antes de cambiar de tienda.');
   }
 
