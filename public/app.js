@@ -3060,30 +3060,44 @@ function quoteForm(){if(!db.cart.length)return alert('Arma primero el carrito de
 function saveQuote(){let c=db.clients.find(x=>x.id===Number(qClient.value))||db.clients[0],total=cartTotal(),number=db.seq.quote++,doc='COT-'+String(number).padStart(6,'0');db.quotes.push({id:uid(),date:new Date().toISOString(),doc,clientId:c.id,client:c.name,total,items:clone(db.cart),note:qNote.value||'',status:'ABIERTA',storeId:currentStore().id,user:session.name});audit('CREAR','COTIZACION',doc);closeModal();save();render()}
 function loadQuote(id){let q=db.quotes.find(x=>x.id===id);if(!q)return;if(db.cart.length&&!confirm('La venta actual será reemplazada por la cotización.'))return;db.cart=clone(q.items);q.status='CARGADA_POS';db.activeStoreId=q.storeId||db.activeStoreId;audit('CARGAR','COTIZACION',q.doc);save();view='pos';render()}
 
+
 function clientRows(list=db.clients){
   return list.map(c=>`
     <tr>
       <td>${esc(c.docType)} ${esc(c.doc)}</td>
-      <td>
-        <b>${esc(c.name)}</b>
-        <div class="muted">${esc(c.email||'')}</div>
-      </td>
+      <td><b>${esc(c.name)}</b><div class="muted">${esc(c.email||'')}</div></td>
       <td>${esc(c.phone)}</td>
       <td>${c.points||0}</td>
       <td>
-        <button class="btn alt" onclick="pointsHistory(${c.id})">
-          Puntos
-        </button>
-        ${c.name==='Cliente General' ? '' : `
-          <button class="btn danger" onclick="deleteClient(${c.id})">
-            Eliminar
-          </button>
-        `}
+        <button class="btn alt" onclick="pointsHistory(${c.id})">Puntos</button>
+        ${c.name==='Cliente General'?'':`<button class="btn danger" onclick="deleteClient(${c.id})">Eliminar</button>`}
       </td>
     </tr>
   `).join('')||empty(5);
 }
+
 function clientSearch(q){document.getElementById('clientRows').innerHTML='<tr><th>Documento</th><th>Cliente</th><th>Teléfono</th><th>Puntos</th><th></th></tr>'+clientRows(db.clients.filter(c=>(c.name+c.doc+c.phone).toLowerCase().includes(q.toLowerCase())))}function clientForm(){modal('Nuevo cliente',`<div class="formgrid"><select id="cdt" class="input"><option>DNI</option><option>RUC</option><option>CE</option></select><input id="cd" class="input" placeholder="Documento"><input id="cn" class="input" placeholder="Nombre/Razón social"><input id="ct" class="input" placeholder="Teléfono"><input id="ce" class="input" placeholder="Email"><input id="ca" class="input" placeholder="Dirección"></div>`,`<button class="btn good" onclick="saveClient()">Guardar</button>`)}function saveClient(){if(!cn.value)return alert('Nombre obligatorio');if(cd.value&&db.clients.some(x=>x.doc===cd.value.trim()))return alert('Ese documento ya está registrado.');db.clients.push({id:uid(),docType:cdt.value,doc:cd.value,name:cn.value,phone:ct.value,email:ce.value,address:ca.value,points:0});closeModal();save();render()}function pointsHistory(id){let c=db.clients.find(x=>x.id===id),rows=db.pointsLedger.filter(x=>x.clientId===id).slice().reverse().map(x=>`<tr><td>${new Date(x.date).toLocaleString()}</td><td>${x.type}</td><td>${x.points}</td><td>${esc(x.reference||'')}</td></tr>`).join('')||empty(4);modal('Historial de puntos',`<p><b>${esc(c.name)}</b> · ${c.points||0} puntos</p><table class="table"><tr><th>Fecha</th><th>Tipo</th><th>Puntos</th><th>Referencia</th></tr>${rows}</table>`,`<button class="btn alt" onclick="closeModal()">Cerrar</button>`)}
+
+function deleteClient(id){
+  const c=db.clients.find(x=>String(x.id)===String(id));
+  if(!c)return alert('Cliente no encontrado.');
+  if(c.name==='Cliente General')return alert('No puedes eliminar Cliente General.');
+
+  const hasSales=db.sales.some(s=>String(s.clientId)===String(c.id));
+  const hasPoints=db.pointsLedger.some(p=>String(p.clientId)===String(c.id));
+
+  if(hasSales||hasPoints){
+    return alert('Este cliente tiene ventas o movimientos de puntos. No se puede eliminar para conservar su historial.');
+  }
+
+  if(!confirm(`¿Eliminar definitivamente a ${c.name}?`))return;
+
+  db.clients=db.clients.filter(x=>String(x.id)!==String(c.id));
+  audit('ELIMINAR','CLIENTE',c.name+' · '+c.doc);
+  save();
+  render();
+  alert('Cliente eliminado.');
+}
 
 function userStoreOptions(selectedId = '') {
   return (db.stores || [])
