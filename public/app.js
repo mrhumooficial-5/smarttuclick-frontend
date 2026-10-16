@@ -1527,12 +1527,21 @@ function printSaleFormat(id, format = 'A4') {
         w.focus();
 
         // Esperar a que el navegador termine de renderizar el documento.
-        setTimeout(() => {
-            if (!w.closed) {
-                w.focus();
-                w.print();
-            }
-        }, 700);
+        
+w.onload = () => {
+    if (!w.closed) {
+        w.focus();
+        w.print();
+    }
+};
+
+setTimeout(() => {
+    if (!w.closed) {
+        w.focus();
+        w.print();
+    }
+}, 1500);
+
     } catch (error) {
         w.close();
         console.error('Error al preparar la impresión:', error);
