@@ -1531,35 +1531,21 @@ function printSaleFormat(id, format = 'A4') {
 setTimeout(() => {
     if (w.closed) return;
 
-    
-try {
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-
-    w.onload = () => {
-        if (w.closed) return;
+    try {
         w.focus();
         w.print();
-    };
+    } catch (error) {
+        console.error('Error al imprimir:', error);
+        alert('No se pudo abrir la impresión: ' + error.message);
+    }
+}, 1000);
 
-    // Respaldo por si el navegador no dispara onload.
-    setTimeout(() => {
-        if (w.closed) return;
-        w.focus();
-        if (!w.document.body || !w.document.body.innerHTML) {
-            alert('No se pudo cargar el documento para imprimir.');
-            return;
-        }
-        w.print();
-    }, 1500);
-
-} catch (error) {
-    if (!w.closed) w.close();
-    console.error('Error al preparar la impresión:', error);
-    alert('Error al imprimir: ' + error.message);
+    } catch (error) {
+        w.close();
+        console.error('Error al preparar la impresión:', error);
+        alert('No se pudo preparar la impresión. Revisa la consola del navegador.');
+    }
 }
-
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('modalHost')){closeModal();return}if(e.key==='F2'){e.preventDefault();focusBarcode();}})
 function heldSales(){let rows=db.held.slice().reverse().map(h=>`<tr><td>${new Date(h.date).toLocaleString()}</td><td>${h.items.reduce((a,i)=>a+i.qty,0)} und.</td><td><button class="btn good" onclick="restoreHeld(${h.id})">Recuperar</button></td></tr>`).join('')||empty(3);modal('Ventas en espera',`<table class="table"><tr><th>Fecha</th><th>Unidades</th><th></th></tr>${rows}</table>`,`<button class="btn alt" onclick="closeModal()">Cerrar</button>`)}
