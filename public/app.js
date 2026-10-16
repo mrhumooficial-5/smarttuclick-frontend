@@ -3715,7 +3715,8 @@ function deleteStore(id) {
 
 
 
-function modal(title,body,actions){document.getElementById('modalHost')?.remove();document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="modalHost"><div class="modalbox"><div class="section-title"><h3>${esc(title)}</h3><button class="iconbtn" onclick="closeModal()">×</button></div>${body}<div class="modalactions">${actions}<button class="btn alt" onclick="closeModal()">Cancelar</button></div></div></div>`)}function closeModal(){document.getElementById('modalHost')?.remove()}
+function modal(title,body,actions=''){document.getElementById('modalHost')?.remove();document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="modalHost"><div class="modalbox"><div class="section-title"><h3>${esc(title)}</h3><button class="iconbtn" onclick="closeModal()">×</button></div>${body}<div class="modalactions">${actions||''}<button class="btn alt" onclick="closeModal()">Cancelar</button></div></div></div>`)}
+function closeModal(){document.getElementById('modalHost')?.remove()}
 
 
 
