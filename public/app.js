@@ -335,14 +335,22 @@ async function stcConnect(localUser,localPassword){
   }finally{stcBusy=false;}
 }
 
+
 async function stcRemoteRefresh(){
   if(!stcToken||!stcReady||stcBusy)return;
+
+  // No reemplazar los datos mientras hay productos en el carrito de venta.
+  if(view === 'pos' && db.cart?.length) return;
+
   try{
     stcBusy=true;
     await stcPull();
     if(!document.getElementById('modalHost') && view !== 'reports')render();
-  }catch(e){console.error('SmartTuClick API refresh:',e)}
-  finally{stcBusy=false}
+  }catch(e){
+    console.error('SmartTuClick API refresh:',e);
+  }finally{
+    stcBusy=false;
+  }
 }
 
 function save(){
