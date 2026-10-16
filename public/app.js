@@ -1403,16 +1403,16 @@ const discount=db.cart.reduce((a,i)=>{
       (cash.paymentTotals[pmt.method]||0)
       +Number(pmt.amount||0);
 
-    if(pmt.method==='Efectivo'){
+   if(pmt.method==='Efectivo'){
+    cash.expected+=Number(pmt.amount||0);
+}
 
-      cash.expected+=Number(pmt.amount||0);
-
-      cash.movements.push({
-        date:new Date().toISOString(),
-        type:'VENTA',
-        detail:sale.doc+' · '+pmt.method,
-        amount:Number(pmt.amount||0)
-      });
+cash.movements.push({
+    date:new Date().toISOString(),
+    type:'VENTA',
+    detail:sale.doc+' · '+pmt.method,
+    amount:Number(pmt.amount||0)
+});
 
       if(change>0){
 
