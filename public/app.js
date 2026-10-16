@@ -1483,7 +1483,7 @@ function printSaleFormat(id, format = 'A4') {
         ${printLogo}
         <h2>${esc(db.company.name)}</h2>
         ${printHeader}
-        <p class="center"><b>${esc(s.doc || '')} · ${esc(s.docType || '')}</p>
+        <p class="center"><b>${esc(s.doc || '')} · ${esc(s.docType || '')}</b></p>
         <p>Cliente: ${esc(s.client || 'Público general')}</p>
         <p>Tienda: ${esc(s.store || '')}</p>
         ${printTop}
