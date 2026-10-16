@@ -720,34 +720,38 @@ cashSupervision:()=>`
 
 
 
+
+
 cash: () => {
     const cash = currentCash();
     const movements = (cash.movements || []).slice(-30).reverse();
 
-    const paymentTotals = {};
-    movements.forEach(x => {
-        const type = String(x.type || '').toUpperCase();
-        const detail = String(x.detail || '');
-        const match = detail.match(/(Efectivo|Yape|Izipay|Tarjeta|Transferencia|Plin)/i);
+    const methods = [
+        'Efectivo',
+        'Yape',
+        'Plin',
+        'Izipay',
+        'Tarjeta',
+        'Transferencia'
+    ];
 
-        if (type.includes('VENTA') && match) {
-            const method = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
-            paymentTotals[method] = (paymentTotals[method] || 0) + Number(x.amount || 0);
-        }
-    });
+    const paymentSummary = methods.map(method => {
+        const total = Number(cash.paymentTotals?.[method] || 0);
 
-    const paymentSummary = Object.entries(paymentTotals).map(([method, total]) =>
-        `<div class="card">
-            <span class="muted">${esc(method)}</span>
-            <div class="kpi">${money(total)}</div>
-        </div>`
-    ).join('');
+        return `
+            <div class="card" style="padding:16px;min-width:130px">
+                <span class="muted">${esc(method)}</span>
+                <div class="kpi">${money(total)}</div>
+            </div>
+        `;
+    }).join('');
 
     return `
         <div class="grid">
             <div class="card">
                 <b>Turno de caja</b>
                 <div class="kpi">${cash.open ? 'ABIERTA' : 'CERRADA'}</div>
+
                 ${cash.open ? `
                     <p class="muted">
                         Abierta ${new Date(cash.openedAt).toLocaleString()}
@@ -762,16 +766,16 @@ cash: () => {
                 `}
             </div>
 
-            <div class="card">
+            <div class="card" style="grid-column:span 2">
                 <b>Resumen de pagos del turno</b>
-                <div class="grid">
-                    ${paymentSummary || '<p class="muted">No hay movimientos de venta con medios de pago identificables.</p>'}
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:14px">
+                    ${paymentSummary}
                 </div>
             </div>
 
             <div class="card" style="grid-column:1/-1">
                 <b>Movimientos del turno</b>
-                <div style="overflow-x:auto">
+                <div style="overflow-x:auto;margin-top:12px">
                     <table class="table">
                         <thead>
                             <tr>
@@ -797,6 +801,7 @@ cash: () => {
         </div>
     `;
 },
+
 
 products:()=>`<div class="toolbar"><button class="btn good" onclick="productForm()">+ Nuevo producto</button><button class="btn alt" onclick="downloadProductTemplate()">📄 Descargar plantilla</button><button class="btn alt" onclick="importProductsExcel()">📥 Importar Excel</button><button class="btn alt" onclick="exportProductsExcel()">📤 Exportar Excel</button><button class="btn quickIn" onclick="quickStockMove(null,'ENTRADA')">↓ Ingreso rápido</button><button class="btn quickOut" onclick="quickStockMove(null,'SALIDA')">↑ Salida rápida</button><input id="productSearch" class="input grow" placeholder="Buscar producto/SKU/código" oninput="filterProducts(this.value)"><select id="catFilter" class="input" onchange="filterProducts(document.getElementById('productSearch')?.value||'')"><option value="">Todas las categorías</option>${[...new Set(db.products.map(p=>p.category))].map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div class="card"><table class="table"><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Costo</th><th>Precio</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr><tbody id="productRows">${productRows()}</tbody></table></div>`,
 inventory:()=>`<div class="grid"><div class="card"><span>Inventario valorizado</span><div class="kpi">${money(db.products.reduce((a,p)=>a+stockOf(p)*p.cost,0))}</div></div><div class="card"><span>Movimientos</span><div class="kpi">${db.movements.filter(m=>m.storeId===currentStore().id).length}</div></div><div class="card"><span>Stock crítico</span><div class="kpi danger">${db.products.filter(p=>stockOf(p)<=p.min).length}</div></div><div class="card"><span>Unidades</span><div class="kpi">${db.products.reduce((a,p)=>a+stockOf(p),0)}</div></div></div><div class="toolbar section"><input class="input grow" id="kardexSearch" placeholder="Filtrar Kardex" oninput="kardexFilter(this.value)"><button class="btn alt" onclick="adjustStockForm()">Ajuste de inventario</button></div><div class="card"><table class="table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Antes</th><th>Cant.</th><th>Después</th><th>Motivo</th><th>Ref.</th></tr></thead><tbody id="kardexRows">${kardexRows()}</tbody></table></div>`,
