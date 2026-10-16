@@ -274,7 +274,7 @@ async function stcRemoteRefresh(){
   try{
     stcBusy=true;
     await stcPull();
-    if(!document.getElementById('modalHost'))render();
+    if(!document.getElementById('modalHost') && view !== 'reports')render();
   }catch(e){console.error('SmartTuClick API refresh:',e)}
   finally{stcBusy=false}
 }
