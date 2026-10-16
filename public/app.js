@@ -1584,9 +1584,7 @@ function printSaleFormat(id, format = 'A4') {
 
         ${printBottom}
         ${printFarewell}
-        <p class="center" style="margin-top:20px">
-            DOCUMENTO INTERNO · SUNAT 
-        </p>
+        
     </body>
     </html>`;
 
