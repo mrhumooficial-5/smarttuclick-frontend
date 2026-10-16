@@ -3630,28 +3630,24 @@ if (role === 'Administrador') {
   render();
 }
 
-
 function salesVisibleToCurrentUser(){
-  if(session?.role !== 'Cajero'){
+  if(session?.role!=='Cajero'){
     return db.sales;
   }
 
-  const cash = currentCash();
-  const storeId = currentStore().id;
+  const cash=currentCash();
 
-  if(!cash.open || !cash.registerId || !cash.openedAt){
+  if(!cash.open || !cash.registerId){
     return [];
   }
 
-  return db.sales.filter(s =>
-    String(s.storeId) === String(storeId) &&
-    String(s.registerId) === String(cash.registerId) &&
-    String(s.userId) === String(session.id) &&
-    s.status !== 'ANULADA' &&
-    new Date(s.date).getTime() >= new Date(cash.openedAt).getTime()
+  return db.sales.filter(s=>
+    String(s.storeId)===String(currentStore().id) &&
+    String(s.registerId)===String(cash.registerId) &&
+    String(s.userId)===String(session.id) &&
+    (!cash.openedAt || s.date>=cash.openedAt)
   );
 }
-
 
 
 function salesRows(list = salesVisibleToCurrentUser()) {
