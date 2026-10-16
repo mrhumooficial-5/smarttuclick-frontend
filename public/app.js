@@ -1,7 +1,7 @@
 const KEY='smarttuclick_v11';
 const SESSION_KEY='smarttuclick_session';
 const today=()=>new Date().toISOString().slice(0,10);
-const uid=()=>Date.now()+Math.floor(Math.random()*999);
+ const uid=()=>Date.now()*1000+Math.floor(Math.random()*1000);
 const clone=o=>JSON.parse(JSON.stringify(o));
 const seed={
  version:11, company:{id:1,name:'Mi Empresa S.A.C.',ruc:'',igv:0.18},
