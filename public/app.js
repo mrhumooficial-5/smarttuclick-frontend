@@ -861,7 +861,7 @@ function posProducts(q=''){
       const stock=stockOf(p,currentStore().id);
       const agotado=stock<=0;
 
-      return `<div class="product ${agotado?'out-of-stock':''}" onclick="addCart('${p.id}')">
+      return `<div class="product ${agotado?'out-of-stock':''}" onclick="addCart(${p.id})">
       ${p.image ? `<img src="${p.image}" alt="${esc(p.name)}" style="width:100%;height:110px;object-fit:contain;margin-bottom:10px;border-radius:8px">` : ''}
         <div class="row">
           <b>${esc(p.name)}</b>
