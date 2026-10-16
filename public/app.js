@@ -62,8 +62,74 @@ if(legacyCash?.open){
 }
 
 } if(!d.priceLists)d.priceLists=[{id:1,name:'Público',code:'PUB',default:true}]; if(!d.audit)d.audit=[]; if(!d.transfers)d.transfers=[]; if(!d.held)d.held=[]; if(!d.quotes)d.quotes=[]; if(!d.documents)d.documents=[]; if(!d.pointsLedger)d.pointsLedger=[]; if(!d.seq.quickMove)d.seq.quickMove=1;
- d.products=(d.products||[]).map(p=>({...p,unit:p.unit||'UND',brand:p.brand||''}));d.clients=(d.clients||[]).map(c=>({...c,points:c.points||0,docType:c.docType||'DNI'}));
- return d;
+
+d.products=(d.products||[]).map(p=>({...p,unit:p.unit||'UND',brand:p.brand||''}));
+
+// Reparar IDs duplicados conservando referencias por SKU o nombre.
+const gruposID={};
+for(const p of d.products){
+  const k=String(p.id);
+  (gruposID[k]??=[]).push(p);
+}
+
+const productosPorNombre=new Map();
+const productosPorSKU=new Map();
+
+for(const p of d.products){
+  if(p.sku)productosPorSKU.set(String(p.sku).trim().toLowerCase(),p);
+  if(p.name)productosPorNombre.set(String(p.name).trim().toLowerCase(),p);
+}
+
+for(const grupo of Object.values(gruposID)){
+  if(grupo.length<2)continue;
+
+  // El primero conserva su ID; los demás reciben uno nuevo.
+  for(let i=1;i<grupo.length;i++){
+    grupo[i].id=crypto.randomUUID();
+  }
+}
+
+function productoReferencia(x){
+  if(!x)return null;
+  if(x.sku){
+    const p=productosPorSKU.get(String(x.sku).trim().toLowerCase());
+    if(p)return p;
+  }
+  const nombre=x.name??x.product;
+  if(nombre){
+    const p=productosPorNombre.get(String(nombre).trim().toLowerCase());
+    if(p)return p;
+  }
+  return null;
+}
+
+function repararItems(items){
+  if(!Array.isArray(items))return;
+  for(const item of items){
+    const p=productoReferencia(item);
+    if(p)item.id=p.id;
+  }
+}
+
+for(const m of (d.movements||[])){
+  const p=productoReferencia(m);
+  if(p)m.productId=p.id;
+}
+for(const c of (d.cart||[]))repararItems([c]);
+for(const s of (d.sales||[]))repararItems(s.items);
+for(const h of (d.held||[]))repararItems(h.items);
+for(const q of (d.quotes||[]))repararItems(q.items);
+for(const p of (d.purchases||[])){
+  const prod=productoReferencia(p);
+  if(prod)p.productId=prod.id;
+}
+for(const t of (d.transfers||[])){
+  const prod=productoReferencia(t);
+  if(prod)t.productId=prod.id;
+}
+
+d.clients=(d.clients||[]).map(c=>({...c,points:c.points||0,docType:c.docType||'DNI'}));
+return d;
 }
 
 function warehouseForStore(storeId = currentStore()?.id) {
