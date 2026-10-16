@@ -3659,29 +3659,97 @@ function salesFilter(q){
     '<tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Tienda</th><th>Pago</th><th>Total</th><th>Estado</th><th></th></tr>'+
     salesRows(filtered);
 }
-function voidSale(id){let s=db.sales.find(x=>x.id===id);if(!s||s.status==='ANULADA')return;if(!confirm('¿Anular esta venta? La demo revertirá stock y medios de pago.'))return;s.status='ANULADA';for(const i of s.items){let p=db.products.find(x=>x.id===i.id);if(p){let before=stockOf(p,s.storeId);setStock(p,before+i.qty,s.storeId);db.movements.push({id:db.seq.move++,date:new Date().toISOString(),productId:p.id,product:p.name,type:'ENTRADA',before,qty:i.qty,after:stockOf(p,s.storeId),reason:'ANULACIÓN VENTA',storeId:s.storeId,reference:s.doc,user:session.name})}}let c=db.clients.find(x=>x.id===s.clientId),pts=Math.floor(s.total*Number(db.settings.pointsPerSol||0));if(c){c.points=Math.max(0,(c.points||0)-pts);db.pointsLedger.push({id:uid(),date:new Date().toISOString(),clientId:c.id,type:'REVERSE',points:-pts,reference:s.doc})}let payments=s.payments?.length?s.payments:[{method:s.payment,amount:s.total}];const cash=db.cashByStore?.[s.storeId];
-if(cash?.open&&cash.paymentTotals&&String(cash.registerId)===String(s.registerId)){
-  for(const pmt of payments){
-    cash.paymentTotals[pmt.method]=Math.max(
-      0,
-      (cash.paymentTotals[pmt.method]||0)-Number(pmt.amount||0)
-    );
 
-    if(pmt.method==='Efectivo'){
-      cash.expected=Math.max(
-        cash.opening,
-        cash.expected-Number(pmt.amount||0)
-      );
+function voidSale(id) {
+  const s = db.sales.find(x => String(x.id) === String(id));
 
-      cash.movements.push({
-        date:new Date().toISOString(),
-        type:'ANULACIÓN',
-        detail:s.doc+' · '+pmt.method,
-        amount:-Number(pmt.amount||0)
+  if (!s || s.status === 'ANULADA') {
+    alert('No se encontró la venta o ya está anulada.');
+    return;
+  }
+
+  if (!confirm('¿Anular esta venta? Se revertirá el stock y se ajustarán los pagos del turno correspondiente.')) return;
+
+  s.status = 'ANULADA';
+
+  for (const i of (s.items || [])) {
+    const p = db.products.find(x => String(x.id) === String(i.id));
+
+    if (p) {
+      const before = stockOf(p, s.storeId);
+      setStock(p, before + Number(i.qty || 0), s.storeId);
+
+      db.movements.push({
+        id: db.seq.move++,
+        date: new Date().toISOString(),
+        productId: p.id,
+        product: p.name,
+        type: 'ENTRADA',
+        before,
+        qty: Number(i.qty || 0),
+        after: stockOf(p, s.storeId),
+        reason: 'ANULACIÓN VENTA',
+        storeId: s.storeId,
+        reference: s.doc,
+        user: session.name
       });
     }
   }
-}save();render()}
+
+  const c = db.clients.find(x => String(x.id) === String(s.clientId));
+  const pts = Math.floor(Number(s.total || 0) * Number(db.settings.pointsPerSol || 0));
+
+  if (c) {
+    c.points = Math.max(0, Number(c.points || 0) - pts);
+
+    db.pointsLedger.push({
+      id: uid(),
+      date: new Date().toISOString(),
+      clientId: c.id,
+      type: 'REVERSE',
+      points: -pts,
+      reference: s.doc
+    });
+  }
+
+  const payments = Array.isArray(s.payments) && s.payments.length
+    ? s.payments
+    : [{ method: s.payment, amount: s.total }];
+
+  const cash = db.cashByStore?.[s.storeId];
+
+  if (cash?.open && String(cash.registerId) === String(s.registerId)) {
+    if (cash.paymentTotals) {
+      for (const pmt of payments) {
+        cash.paymentTotals[pmt.method] = Math.max(
+          0,
+          Number(cash.paymentTotals[pmt.method] || 0) - Number(pmt.amount || 0)
+        );
+      }
+    }
+
+    for (const pmt of payments) {
+      if (pmt.method === 'Efectivo') {
+        cash.expected = Math.max(
+          Number(cash.opening || 0),
+          Number(cash.expected || 0) - Number(pmt.amount || 0)
+        );
+
+        cash.movements.push({
+          date: new Date().toISOString(),
+          type: 'ANULACIÓN',
+          detail: `${s.doc} · ${pmt.method}`,
+          amount: -Number(pmt.amount || 0)
+        });
+      }
+    }
+  }
+
+  save();
+  render();
+  alert(`Venta ${s.doc} anulada correctamente.`);
+}
+
 function exportCSV(){
   const sales=salesVisibleToCurrentUser();
 
