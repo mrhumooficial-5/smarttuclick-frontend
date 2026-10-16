@@ -1528,19 +1528,17 @@ function printSaleFormat(id, format = 'A4') {
 
         // Esperar a que el navegador termine de renderizar el documento.
         
-w.onload = () => {
-    if (!w.closed) {
-        w.focus();
-        w.print();
-    }
-};
-
 setTimeout(() => {
-    if (!w.closed) {
+    if (w.closed) return;
+
+    try {
         w.focus();
         w.print();
+    } catch (error) {
+        console.error('Error al imprimir:', error);
+        alert('No se pudo abrir la impresión: ' + error.message);
     }
-}, 1500);
+}, 1000);
 
     } catch (error) {
         w.close();
