@@ -3643,8 +3643,26 @@ function salesVisibleToCurrentUser(){
   );
 }
 
-function salesRows(list=salesVisibleToCurrentUser()){
-  return list.slice().reverse().map(s=>`<tr><td>${new Date(s.date).toLocaleString()}</td><td>${esc(s.doc)}</td><td>${esc(s.client)}</td><td>${esc(s.store||'-')}</td><td>${esc(s.payment)}</td><td>${money(s.total)}</td><td>${s.status}</td><td>${s.status!=='ANULADA'?`<button class="btn alt" onclick="printSale(${s.id})">Ver/Imprimir</button> <button class="btn alt" onclick="voidSale(${s.id})">Anular</button>`:''}</td></tr>`).join('')||empty(8);
+
+function salesRows(list = salesVisibleToCurrentUser()) {
+  return list.slice().reverse().map(s => {
+    const id = JSON.stringify(String(s.id));
+
+    return `<tr>
+      <td>${new Date(s.date).toLocaleString()}</td>
+      <td>${esc(s.doc)}</td>
+      <td>${esc(s.client)}</td>
+      <td>${esc(s.store || '-')}</td>
+      <td>${esc(s.payment)}</td>
+      <td>${money(s.total)}</td>
+      <td>${esc(s.status)}</td>
+      <td>${s.status !== 'ANULADA'
+        ? `<button class="btn alt" onclick='printSale(${id})'>Ver/Imprimir</button>
+           <button class="btn alt" onclick='voidSale(${id})'>Anular</button>`
+        : ''}
+      </td>
+    </tr>`;
+  }).join('') || empty(8);
 }
 
 function salesFilter(q){
