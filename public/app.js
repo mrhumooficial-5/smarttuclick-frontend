@@ -1419,12 +1419,8 @@ function saleCompleteModal(sale, points) {
             </div>
 
             <div class="sale-main-actions">
-                <button class="btn good full" onclick="printSaleFormat(${saleId}, 'A4')">
-                    Imprimir A4
-                </button>
-                <button class="btn good full" onclick="printSaleFormat(${saleId}, 'TICKET')">
-                    Imprimir Ticket
-                </button>
+                <button class="btn good full" onclick='printSaleFormat(${JSON.stringify(String(sale.id))},"A4")'>Imprimir A4</button>
+<button class="btn good full" onclick='printSaleFormat(${JSON.stringify(String(sale.id))},"TICKET")'>Imprimir Ticket</button>
                 <button class="btn primary full" onclick="newSaleAfterComplete()">
                     Nueva venta (ESC)
                 </button>
