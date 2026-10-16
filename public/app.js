@@ -871,21 +871,38 @@ function openCartProductMenu(id){
 function editCartProduct(id){
   const i=db.cart.find(x=>String(x.id)===String(id));
   if(!i)return;
+
+  const key=String(id);
   modal('Editar producto',`
-    <label>Nombre</label>
-    <input id="cpName" class="input" value="${esc(i.name)}">
-    <label>Precio unitario (S/)</label>
-    <input id="cpPrice" class="input" type="number" min="0" step="0.01" value="${Number(i.price)||0}">
-    <button class="btn good" onclick="(()=>{
-      const n=document.getElementById('cpName').value.trim();
-      const p=Number(document.getElementById('cpPrice').value);
-      if(!n||!Number.isFinite(p)||p<0)return alert('Revisa el nombre y el precio');
-      const x=db.cart.find(x=>String(x.id)===${JSON.stringify(String(id))});
-      if(!x)return;
-      x.name=n;x.price=p;closeModal();save();render();
-    })()">Guardar cambios</button>
+    <div class="formgrid">
+      <label>Nombre</label>
+      <input id="cpName" class="input" value="${esc(i.name)}">
+
+      <label>Precio unitario (S/)</label>
+      <input id="cpPrice" class="input" type="number" min="0" step="0.01" value="${Number(i.price)||0}">
+    </div>
+
+    <button class="btn good" onclick="saveCartProduct('${key}')">Guardar cambios</button>
     <button class="btn alt" onclick="closeModal()">Cancelar</button>
   `);
+}
+
+function saveCartProduct(id){
+  const x=db.cart.find(i=>String(i.id)===String(id));
+  if(!x)return;
+
+  const name=document.getElementById('cpName').value.trim();
+  const price=Number(document.getElementById('cpPrice').value);
+
+  if(!name||!Number.isFinite(price)||price<0){
+    return alert('Revisa el nombre y el precio');
+  }
+
+  x.name=name;
+  x.price=price;
+  closeModal();
+  save();
+  render();
 }
 
 function giftCartProduct(id){
