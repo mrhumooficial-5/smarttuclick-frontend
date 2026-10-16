@@ -519,7 +519,7 @@ function loginPage(){
 async function login(){
   const userId = Number(document.getElementById('loginUser')?.value);
   const pass = document.getElementById('loginPass')?.value || '';
-  const u = db.users.find(x => x.id === userId);
+  const u = db.users.find(x => String(x.id) === String(userId));
 
   if (!u || !u.active) {
     return alert('Usuario no válido o inactivo.');
