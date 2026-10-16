@@ -1380,7 +1380,7 @@ function printSaleFormat(id, format = 'A4') {
     }
 
     // Abrir la ventana inmediatamente para evitar el bloqueo de ventanas emergentes.
-    const w = window.open('', '_blank', 'width=520,height=760');
+    const w = window.open('about:blank', '_blank');
 
     if (!w) {
         alert('El navegador bloqueó la impresión. Permite las ventanas emergentes para SmartTuClick y vuelve a intentarlo.');
