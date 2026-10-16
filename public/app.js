@@ -898,24 +898,41 @@ function giftCartProduct(id){
 function discountCartProduct(id){
   const i=db.cart.find(x=>String(x.id)===String(id));
   if(!i)return;
+
+  const key=String(id);
   modal('Descuento del producto',`
-    <label>Tipo de descuento</label>
-    <select id="cpDiscountType" class="input">
-      <option value="S/">Soles (S/)</option>
-      <option value="%">Porcentaje (%)</option>
-    </select>
-    <label>Descuento</label>
-    <input id="cpDiscount" class="input" type="number" min="0" step="0.01" value="${Number(i.discount)||0}">
-    <button class="btn good" onclick="(()=>{
-      const x=db.cart.find(x=>String(x.id)===${JSON.stringify(String(id))});
-      const d=Number(document.getElementById('cpDiscount').value);
-      const t=document.getElementById('cpDiscountType').value;
-      if(!x||!Number.isFinite(d)||d<0||(t==='%'&&d>100)||(t==='S/'&&d>Number(x.price)*Number(x.qty)))return alert('Descuento inválido');
-      x.discount=d;x.discountType=t==='S/'?'S/':'%';
-      closeModal();save();render();
-    })()">Aplicar descuento</button>
+    <div class="formgrid">
+      <label>Tipo de descuento</label>
+      <select id="cpDiscountType" class="input">
+        <option value="S/">Soles (S/)</option>
+        <option value="%">Porcentaje (%)</option>
+      </select>
+      <label>Descuento</label>
+      <input id="cpDiscount" class="input" type="number" min="0" step="0.01" value="${Number(i.discount)||0}">
+    </div>
+    <button class="btn good" onclick="applyCartDiscount('${key}')">Aplicar descuento</button>
     <button class="btn alt" onclick="closeModal()">Cancelar</button>
   `);
+}
+
+function applyCartDiscount(id){
+  const x=db.cart.find(i=>String(i.id)===String(id));
+  if(!x)return;
+
+  const d=Number(document.getElementById('cpDiscount').value);
+  const t=document.getElementById('cpDiscountType').value;
+  const base=Number(x.price)*Number(x.qty);
+
+  if(!Number.isFinite(d)||d<0||
+     (t==='%'&&d>100)||(t==='S/'&&d>base)){
+    return alert('Descuento inválido');
+  }
+
+  x.discount=d;
+  x.discountType=t==='%'?'%':'S/';
+  closeModal();
+  save();
+  render();
 }
 
 function posProducts(q=''){
