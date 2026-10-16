@@ -822,15 +822,13 @@ function cartHtml(){
     const total=Math.max(0,base-desc);
 
     return `<div class="listrow">
-      <b>${esc(i.name)}</b>
+      <b class="cart-product-name" onclick="openCartProductMenu('${String(i.id).replace(/'/g,"\\'")}')">${esc(i.name)}</b>
       <div>${money(i.price)} c/u</div>
       <div>Cantidad: ${Number(i.qty||0)}</div>
       <b>${money(total)}</b>
     </div>`;
   }).join('');
 }
-
-
 
 function cartHtml(){
   if(!db.cart.length){
@@ -844,7 +842,7 @@ function cartHtml(){
     const total=Math.max(0,base-desc);
 
     return `<div class="listrow" style="padding:10px 0;border-bottom:1px solid #e5e7eb">
-      <b>${esc(i.name)}</b>
+      <b class="cart-product-name" onclick="openCartProductMenu('${String(i.id).replace(/'/g,"\\'")}')">${esc(i.name)}</b>
       <div>${money(i.price)} c/u</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
         <button class="btn alt smallBtn" onclick="changeCart(${i.id},-1)">−</button>
@@ -854,6 +852,70 @@ function cartHtml(){
       <b>${money(total)}</b>
     </div>`;
   }).join('');
+}
+
+function openCartProductMenu(id){
+  const item=db.cart.find(i=>String(i.id)===String(id));
+  if(!item)return;
+
+  modal('Opciones del producto',`
+    <div class="formgrid">
+      <button class="btn" onclick="editCartProduct('${id}')">✏️ Nombre y precio</button>
+      <button class="btn" onclick="giftCartProduct('${id}')">🎁 Regalo / bonificación</button>
+      <button class="btn" onclick="discountCartProduct('${id}')">％ Aplicar descuento</button>
+    </div>
+    <button class="btn alt" onclick="closeModal()">Cancelar</button>
+  `);
+}
+
+function editCartProduct(id){
+  const i=db.cart.find(x=>String(x.id)===String(id));
+  if(!i)return;
+  modal('Editar producto',`
+    <label>Nombre</label>
+    <input id="cpName" class="input" value="${esc(i.name)}">
+    <label>Precio unitario (S/)</label>
+    <input id="cpPrice" class="input" type="number" min="0" step="0.01" value="${Number(i.price)||0}">
+    <button class="btn good" onclick="(()=>{
+      const n=document.getElementById('cpName').value.trim();
+      const p=Number(document.getElementById('cpPrice').value);
+      if(!n||!Number.isFinite(p)||p<0)return alert('Revisa el nombre y el precio');
+      const x=db.cart.find(x=>String(x.id)===${JSON.stringify(String(id))});
+      if(!x)return;
+      x.name=n;x.price=p;closeModal();save();render();
+    })()">Guardar cambios</button>
+    <button class="btn alt" onclick="closeModal()">Cancelar</button>
+  `);
+}
+
+function giftCartProduct(id){
+  const i=db.cart.find(x=>String(x.id)===String(id));
+  if(!i)return;
+  i.price=0;i.discount=0;i.discountType='';
+  closeModal();save();render();
+}
+
+function discountCartProduct(id){
+  const i=db.cart.find(x=>String(x.id)===String(id));
+  if(!i)return;
+  modal('Descuento del producto',`
+    <label>Tipo de descuento</label>
+    <select id="cpDiscountType" class="input">
+      <option value="S/">Soles (S/)</option>
+      <option value="%">Porcentaje (%)</option>
+    </select>
+    <label>Descuento</label>
+    <input id="cpDiscount" class="input" type="number" min="0" step="0.01" value="${Number(i.discount)||0}">
+    <button class="btn good" onclick="(()=>{
+      const x=db.cart.find(x=>String(x.id)===${JSON.stringify(String(id))});
+      const d=Number(document.getElementById('cpDiscount').value);
+      const t=document.getElementById('cpDiscountType').value;
+      if(!x||!Number.isFinite(d)||d<0||(t==='%'&&d>100)||(t==='S/'&&d>Number(x.price)*Number(x.qty)))return alert('Descuento inválido');
+      x.discount=d;x.discountType=t==='S/'?'S/':'%';
+      closeModal();save();render();
+    })()">Aplicar descuento</button>
+    <button class="btn alt" onclick="closeModal()">Cancelar</button>
+  `);
 }
 
 function posProducts(q=''){
