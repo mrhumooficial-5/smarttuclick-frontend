@@ -1397,36 +1397,37 @@ const discount=db.cart.reduce((a,i)=>{
     };
   }
 
-  for(const pmt of payments){
+  
+for (const pmt of payments) {
+  const amount = Number(pmt.amount || 0);
 
-    cash.paymentTotals[pmt.method]=
-      (cash.paymentTotals[pmt.method]||0)
-      +Number(pmt.amount||0);
+  cash.paymentTotals[pmt.method] =
+    (cash.paymentTotals[pmt.method] || 0) + amount;
 
-    if(pmt.method==='Efectivo'){
+  // Registrar todos los medios de pago
+  cash.movements.push({
+    date: new Date().toISOString(),
+    type: 'VENTA',
+    detail: sale.doc + ' · ' + pmt.method,
+    amount: amount
+  });
 
-      cash.expected+=Number(pmt.amount||0);
+  // Solo el efectivo afecta el saldo de caja
+  if (pmt.method === 'Efectivo') {
+    cash.expected += amount;
+
+    if (change > 0) {
+      cash.expected -= change;
 
       cash.movements.push({
-        date:new Date().toISOString(),
-        type:'VENTA',
-        detail:sale.doc+' · '+pmt.method,
-        amount:Number(pmt.amount||0)
+        date: new Date().toISOString(),
+        type: 'VUELTO',
+        detail: sale.doc + ' · Efectivo',
+        amount: -change
       });
-
-      if(change>0){
-
-        cash.expected-=change;
-
-        cash.movements.push({
-          date:new Date().toISOString(),
-          type:'VUELTO',
-          detail:sale.doc+' · '+pmt.method,
-          amount:-change
-        });
-      }
     }
   }
+}
 
   audit(
     'VENTA',
