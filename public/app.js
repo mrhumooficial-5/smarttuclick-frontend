@@ -4320,8 +4320,9 @@ async function updateUser(id) {
     render();
     alert('Usuario actualizado correctamente.');
   } catch (error) {
-    alert('No se pudieron guardar los cambios: ' + error.message);
-  }
+  console.error('Error guardando usuario:', error);
+  alert('Error al guardar: ' + (error.message || error));
+}
 }
 
 
