@@ -723,12 +723,8 @@ cashSupervision:()=>`
 
 
 cash: () => {
-    
-
-const cash = currentCash();
-const movements = (cash.movements || []).slice(-30).reverse();
-
-
+    const cash = currentCash();
+    const movements = (cash.movements || []).slice(-30).reverse();
 
     const methods = [
         'Efectivo',
@@ -3634,28 +3630,24 @@ if (role === 'Administrador') {
   render();
 }
 
-
-function salesVisibleToCurrentUser() {
-  // Solo el administrador puede consultar el historial completo.
-  if (session?.role === 'Administrador') {
+function salesVisibleToCurrentUser(){
+  if(session?.role!=='Cajero'){
     return db.sales;
   }
 
-  // Los demás usuarios solo ven ventas de su caja abierta.
-  const cash = currentCash();
+  const cash=currentCash();
 
-  if (!session || !cash.open || !cash.registerId) {
+  if(!cash.open || !cash.registerId){
     return [];
   }
 
-  return db.sales.filter(s =>
-    String(s.storeId) === String(currentStore().id) &&
-    String(s.registerId) === String(cash.registerId) &&
-    String(s.userId) === String(session.id) &&
-    (!cash.openedAt || s.date >= cash.openedAt)
+  return db.sales.filter(s=>
+    String(s.storeId)===String(currentStore().id) &&
+    String(s.registerId)===String(cash.registerId) &&
+    String(s.userId)===String(session.id) &&
+    (!cash.openedAt || s.date>=cash.openedAt)
   );
 }
-
 
 
 function salesRows(list = salesVisibleToCurrentUser()) {
