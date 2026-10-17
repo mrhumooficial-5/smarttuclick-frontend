@@ -4174,7 +4174,9 @@ function editUser(id) {
     <div class="formgrid">
       <input id="un" class="input" value="${esc(u.name)}" placeholder="Nombre">
       <input id="uu" class="input" value="${esc(u.user)}" placeholder="Usuario">
-      <input id="up" class="input" type="password" placeholder="Nueva contraseña (opcional)">
+      <input id="up" class="input" type="password"
+       autocomplete="new-password"
+       placeholder="Nueva contraseña (opcional, mínimo 8 caracteres)">
 
       <select id="ur" class="input">
         ${Object.keys(db.roles).map(r =>
@@ -4224,7 +4226,8 @@ function editUser(id) {
   `);
 }
 
-function updateUser(id) {
+
+async function updateUser(id) {
   const u = db.users.find(x => String(x.id) === String(id));
   if (!u) return alert('No se encontró el usuario.');
 
@@ -4234,65 +4237,93 @@ function updateUser(id) {
   const role = document.getElementById('ur').value;
   const active = document.getElementById('ua').value === '1';
 
-  if (!name || !username) return alert('Completa nombre y usuario.');
+  if (!name || !username) {
+    return alert('Completa nombre y usuario.');
+  }
+
+  if (password && password.length < 8) {
+    return alert('La contraseña debe tener al menos 8 caracteres.');
+  }
 
   if (db.users.some(x =>
     String(x.id) !== String(id) &&
     x.user.toLowerCase() === username.toLowerCase()
-  )) return alert('Ese usuario ya existe.');
+  )) {
+    return alert('Ese usuario ya existe.');
+  }
 
-  if (u.id === session.id && !active) {
+  if (String(u.id) === String(session.id) && !active) {
     return alert('No puedes desactivar tu propio usuario.');
   }
 
-  
-const assignments = [];
+  const assignments = [];
 
-if (role !== 'Administrador') {
-  for (const row of document.querySelectorAll('#userAssignments .user-assignment')) {
-    const storeId = row.querySelector('.user-store').value;
-    const warehouseId = row.querySelector('.user-warehouse').value;
+  if (role !== 'Administrador') {
+    for (const row of document.querySelectorAll('#userAssignments .user-assignment')) {
+      const storeId = row.querySelector('.user-store').value;
+      const warehouseId = row.querySelector('.user-warehouse').value;
 
-    const warehouse = db.warehouses.find(w =>
-      String(w.id) === String(warehouseId) &&
-      String(w.storeId) === String(storeId) &&
-      w.active !== false
-    );
+      const warehouse = db.warehouses.find(w =>
+        String(w.id) === String(warehouseId) &&
+        String(w.storeId) === String(storeId) &&
+        w.active !== false
+      );
 
-    if (!storeId || !warehouse) {
-      return alert('Revisa las tiendas y los almacenes asignados.');
+      if (!storeId || !warehouse) {
+        return alert('Revisa las tiendas y los almacenes asignados.');
+      }
+
+      if (!assignments.some(a =>
+        String(a.storeId) === String(storeId) &&
+        String(a.warehouseId) === String(warehouseId)
+      )) {
+        assignments.push({ storeId, warehouseId });
+      }
     }
 
-    if (!assignments.some(a =>
-      String(a.storeId) === String(storeId) &&
-      String(a.warehouseId) === String(warehouseId)
-    )) {
-      assignments.push({ storeId, warehouseId });
+    if (!assignments.length) {
+      return alert('Asigna al menos una tienda y un almacén.');
     }
   }
 
-  if (!assignments.length) {
-    return alert('Asigna al menos una tienda y un almacén.');
+  const payload = {
+    name,
+    username,
+    role,
+    active,
+    password,
+    storeAssignments: role === 'Administrador' ? [] : assignments,
+    storeIds: role === 'Administrador' ? [] : [...new Set(assignments.map(a => a.storeId))],
+    warehouseIds: role === 'Administrador' ? [] : [...new Set(assignments.map(a => a.warehouseId))]
+  };
+
+  try {
+    const response = await stcApi(`/api/users/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+
+    u.name = name;
+    u.user = username;
+    u.role = role;
+    u.active = active;
+    u.storeAssignments = payload.storeAssignments;
+    u.storeIds = payload.storeIds;
+    u.warehouseIds = payload.warehouseIds;
+
+    if (password) u.password = password;
+
+    if (String(u.id) === String(session.id)) session = u;
+
+    audit('MODIFICAR', 'USUARIO', u.user);
+    closeModal();
+    render();
+    alert('Usuario actualizado correctamente.');
+  } catch (error) {
+    alert('No se pudieron guardar los cambios: ' + error.message);
   }
 }
 
-  u.name = name;
-  u.user = username;
-  u.role = role;
-  u.active = active;
-  u.storeAssignments = role === 'Administrador' ? [] : assignments;
-u.storeIds = role === 'Administrador' ? [] : [...new Set(assignments.map(a => a.storeId))];
-u.warehouseIds = role === 'Administrador' ? [] : [...new Set(assignments.map(a => a.warehouseId))];
-
-  if (password) u.password = password;
-
-  if (String(u.id) === String(session.id)) session = u;
-
-  audit('MODIFICAR', 'USUARIO', u.user);
-  closeModal();
-  save();
-  render();
-}
 
 function deleteUser(id) {
   const u = db.users.find(x => String(x.id) === String(id));
