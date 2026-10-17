@@ -3630,24 +3630,28 @@ if (role === 'Administrador') {
   render();
 }
 
-function salesVisibleToCurrentUser(){
-  if(session?.role!=='Cajero'){
+
+function salesVisibleToCurrentUser() {
+  // Solo el administrador puede consultar el historial completo.
+  if (session?.role === 'Administrador') {
     return db.sales;
   }
 
-  const cash=currentCash();
+  // Los demás usuarios solo ven ventas de su caja abierta.
+  const cash = currentCash();
 
-  if(!cash.open || !cash.registerId){
+  if (!session || !cash.open || !cash.registerId) {
     return [];
   }
 
-  return db.sales.filter(s=>
-    String(s.storeId)===String(currentStore().id) &&
-    String(s.registerId)===String(cash.registerId) &&
-    String(s.userId)===String(session.id) &&
-    (!cash.openedAt || s.date>=cash.openedAt)
+  return db.sales.filter(s =>
+    String(s.storeId) === String(currentStore().id) &&
+    String(s.registerId) === String(cash.registerId) &&
+    String(s.userId) === String(session.id) &&
+    (!cash.openedAt || s.date >= cash.openedAt)
   );
 }
+
 
 
 function salesRows(list = salesVisibleToCurrentUser()) {
