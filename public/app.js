@@ -723,8 +723,11 @@ cashSupervision:()=>`
 
 
 cash: () => {
-    const cash = currentCash();
-    const movements = (cash.movements || []).slice(-30).reverse();
+    
+const movements = (cash.open && String(cash.userId) === String(session?.id))
+  ? (cash.movements || []).slice(-30).reverse()
+  : [];
+
 
     const methods = [
         'Efectivo',
